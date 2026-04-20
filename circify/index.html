@@ -511,7 +511,7 @@
         <summary>Controls <span class="panel-arrow">▾</span></summary>
         <div class="section-body" style="font-size:11px;line-height:1.5;color:#a6b7c8;">
           LMB drag gate: move freely<br />
-          LMB output pin -> input pin: connect<br />
+          LMB output pin or wire -> input pin: connect<br />
           LMB input body: cycle 0/1/floating<br />
           MMB or Shift+LMB drag: pan viewport<br />
           Wheel: zoom to active circuit area<br />
@@ -831,8 +831,9 @@
 
       evaluate() {
         const states = this.inputStates;
-        if (states.some((s) => s === SIGNAL.FLOAT)) return SIGNAL.FLOAT;
-        return states.every((s) => s === SIGNAL.HIGH) ? SIGNAL.LOW : SIGNAL.HIGH;
+        if (states.some((s) => s === SIGNAL.LOW)) return SIGNAL.HIGH;
+        if (states.every((s) => s === SIGNAL.HIGH)) return SIGNAL.LOW;
+        return SIGNAL.FLOAT;
       }
     }
 
@@ -843,8 +844,9 @@
 
       evaluate() {
         const states = this.inputStates;
-        if (states.some((s) => s === SIGNAL.FLOAT)) return SIGNAL.FLOAT;
-        return states.every((s) => s === SIGNAL.LOW) ? SIGNAL.HIGH : SIGNAL.LOW;
+        if (states.some((s) => s === SIGNAL.HIGH)) return SIGNAL.LOW;
+        if (states.every((s) => s === SIGNAL.LOW)) return SIGNAL.HIGH;
+        return SIGNAL.FLOAT;
       }
     }
 
@@ -1041,9 +1043,6 @@
         if (target.type === "INPUT") {
           return { ok: false, reason: "Cannot drive an InputSource." };
         }
-        if (source.type === "INPUT" && (this.adjacency.get(sourceID)?.size || 0) >= 1) {
-          return { ok: false, reason: "InputSource supports only one outgoing wire." };
-        }
         if (!target.inputPins[targetPinIndex]) {
           return { ok: false, reason: "Invalid target pin." };
         }
@@ -1053,19 +1052,10 @@
           this.removeConnection(prior.id);
         }
 
-        if (this.hasPath(targetID, sourceID)) {
-          return { ok: false, reason: "Combinational loop blocked (cycle detected)." };
-        }
-
         const edge = new Connection(makeId("e"), sourceID, targetID, targetPinIndex);
         this.edges.set(edge.id, edge);
         this.adjacency.get(sourceID)?.add(edge.id);
         this.incoming.get(targetID)?.add(edge.id);
-
-        if (this.detectCycle()) {
-          this.removeConnection(edge.id);
-          return { ok: false, reason: "Connection rejected: cycle detected." };
-        }
 
         this.refreshTargetInputs(targetID);
 
@@ -1102,10 +1092,6 @@
 
       // Entry point for event-driven propagation starting at a changed source.
       propagateFrom(sourceID) {
-        if (this.detectCycle()) {
-          throw new Error("Propagation halted because graph contains a cycle.");
-        }
-
         const origin = this.nodes.get(sourceID);
         if (!origin) return;
 
@@ -1113,7 +1099,7 @@
           origin.evaluate();
         }
 
-        this._propagateRecursive(sourceID, 0, new Set());
+        this.stabilizeAll();
       }
 
       /**
@@ -1172,26 +1158,57 @@
         activeStack.delete(nodeID);
       }
 
-      // Deterministic full-pass recompute in topological order.
+      // Iterative recompute supports both DAGs and feedback-loop circuits.
       stabilizeAll() {
-        const order = this.topologicalSort();
-        if (!order) {
-          throw new Error("Cannot stabilize: graph contains a cycle.");
-        }
+        const maxIterations = Math.max(24, Math.min(this.maxPropagationDepth, this.nodes.size * 40 + 40));
 
-        for (const nodeID of order) {
-          const node = this.nodes.get(nodeID);
-          if (!node) continue;
-          if (node.type !== "INPUT") {
-            this.refreshTargetInputs(nodeID);
+        for (const node of this.nodes.values()) {
+          if (node.type === "INPUT") {
             node.outputState = node.evaluate();
           }
+        }
 
-          for (const edgeID of this.adjacency.get(nodeID) || []) {
-            const edge = this.edges.get(edgeID);
+        let converged = false;
+        for (let step = 0; step < maxIterations; step += 1) {
+          for (const node of this.nodes.values()) {
+            if (node.type !== "INPUT" && node.inputCount > 0) {
+              node.clearInputs();
+            }
+          }
+
+          for (const edge of this.edges.values()) {
             const source = this.nodes.get(edge.sourceID);
             edge.signal = source?.outputState ?? SIGNAL.FLOAT;
+            const target = this.nodes.get(edge.targetID);
+            if (!target) continue;
+            if (edge.targetPinIndex < target.inputCount) {
+              target.setInput(edge.targetPinIndex, edge.signal);
+            }
           }
+
+          let changed = false;
+          for (const node of this.nodes.values()) {
+            if (node.type === "INPUT") continue;
+            const next = node.evaluate();
+            if (next !== node.outputState) {
+              node.outputState = next;
+              changed = true;
+            }
+          }
+
+          if (!changed) {
+            converged = true;
+            break;
+          }
+        }
+
+        for (const edge of this.edges.values()) {
+          const source = this.nodes.get(edge.sourceID);
+          edge.signal = source?.outputState ?? SIGNAL.FLOAT;
+        }
+
+        if (!converged) {
+          throw new Error("Simulation did not stabilize (possible oscillation).");
         }
       }
 
@@ -2129,6 +2146,11 @@
 
           if (evt.button !== 0) return;
 
+          // Keep the current pending wire alive until pointerup finalizes it.
+          if (this.interaction.connecting) {
+            return;
+          }
+
           const pinHit = this.pickPin(world.x, world.y);
           if (pinHit && pinHit.kind === "output") {
             this.interaction.connecting = {
@@ -2136,6 +2158,24 @@
               from: { ...pinHit.pin },
               to: { x: world.x, y: world.y }
             };
+            return;
+          }
+
+          const edgeTap = this.pickEdgeWithPoint(world.x, world.y, 10);
+          if (edgeTap) {
+            this.interaction.connecting = {
+              sourceID: edgeTap.edge.sourceID,
+              from: { ...edgeTap.point },
+              to: { x: world.x, y: world.y }
+            };
+            this.interaction.snappedTarget = this.findMagneticPin(world.x, world.y, PIN_SNAP_RADIUS);
+            if (this.interaction.snappedTarget) {
+              this.interaction.connecting.to = {
+                x: this.interaction.snappedTarget.pin.x,
+                y: this.interaction.snappedTarget.pin.y
+              };
+            }
+            this.setStatus("Wire tap selected. Drag to an input pin.");
             return;
           }
 
@@ -2211,7 +2251,22 @@
                 this.saveCurrentCircuit();
                 this.setStatus("Connection created.");
               }
+              this.interaction.connecting = null;
+              this.interaction.snappedTarget = null;
+              return;
             }
+
+            // Dropping on another wire retargets the source so users can branch wire-to-wire.
+            const edgeTap = this.pickEdgeWithPoint(world.x, world.y, 10);
+            if (edgeTap) {
+              this.interaction.connecting.sourceID = edgeTap.edge.sourceID;
+              this.interaction.connecting.from = { ...edgeTap.point };
+              this.interaction.connecting.to = { ...edgeTap.point };
+              this.interaction.snappedTarget = null;
+              this.setStatus("Connection source moved to tapped wire. Drag to an input pin.");
+              return;
+            }
+
             this.interaction.connecting = null;
             this.interaction.snappedTarget = null;
             return;
@@ -2418,24 +2473,37 @@
         return best;
       }
 
-      pickEdgeAt(wx, wy) {
+      pickEdgeWithPoint(wx, wy, radius = 9) {
         let best = null;
+        const cursor = { x: wx, y: wy };
+
         for (const edge of this.graph.edges.values()) {
           const source = this.graph.getNode(edge.sourceID);
           const target = this.graph.getNode(edge.targetID);
           if (!source || !target) continue;
+
           const p0 = source.outputPin;
           const p3 = target.inputPins[edge.targetPinIndex];
           if (!p0 || !p3) continue;
-          const dx = Math.max(44, Math.abs(p3.x - p0.x) * 0.5);
-          const p1 = { x: p0.x + dx, y: p0.y };
-          const p2 = { x: p3.x - dx, y: p3.y };
-          const d = distanceToBezierApprox({ x: wx, y: wy }, p0, p1, p2, p3);
-          if (d < 9 && (!best || d < best.distance)) {
-            best = { edge, distance: d };
+
+          const curve = connectionCurveFromPins(p0, p3);
+          const nearest = nearestPointOnBezierApprox(cursor, curve.p0, curve.p1, curve.p2, curve.p3);
+
+          if (nearest.distance <= radius && (!best || nearest.distance < best.distance)) {
+            best = {
+              edge,
+              point: nearest.point,
+              distance: nearest.distance
+            };
           }
         }
-        return best ? best.edge : null;
+
+        return best;
+      }
+
+      pickEdgeAt(wx, wy) {
+        const hit = this.pickEdgeWithPoint(wx, wy, 9);
+        return hit ? hit.edge : null;
       }
 
       // Draws viewport-aware blueprint grid over the visible world area.
@@ -2481,9 +2549,7 @@
           const p3 = target.inputPins[edge.targetPinIndex];
           if (!p0 || !p3) continue;
 
-          const dx = Math.max(44, Math.abs(p3.x - p0.x) * 0.5);
-          const p1 = { x: p0.x + dx, y: p0.y };
-          const p2 = { x: p3.x - dx, y: p3.y };
+          const curve = connectionCurveFromPins(p0, p3);
 
           const c = signalColor(edge.signal);
           const pulseActive = edge.signal === SIGNAL.HIGH;
@@ -2494,15 +2560,15 @@
           ctx.shadowBlur = pulseActive ? 14 : 2;
           ctx.shadowColor = c;
           ctx.beginPath();
-          ctx.moveTo(p0.x, p0.y);
-          ctx.bezierCurveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+          ctx.moveTo(curve.p0.x, curve.p0.y);
+          ctx.bezierCurveTo(curve.p1.x, curve.p1.y, curve.p2.x, curve.p2.y, curve.p3.x, curve.p3.y);
           ctx.stroke();
           ctx.restore();
 
           if (pulseActive) {
             for (let i = 0; i < 3; i += 1) {
               const t = (timeMs * 0.00045 + edge.pulseOffset + i * 0.28) % 1;
-              const point = cubicBezierPoint(p0, p1, p2, p3, t);
+              const point = cubicBezierPoint(curve.p0, curve.p1, curve.p2, curve.p3, t);
               ctx.save();
               ctx.fillStyle = "#b3fbff";
               ctx.shadowColor = "#00f2ff";
@@ -2693,6 +2759,38 @@
         x: (uuu * p0.x) + (3 * uu * t * p1.x) + (3 * u * tt * p2.x) + (ttt * p3.x),
         y: (uuu * p0.y) + (3 * uu * t * p1.y) + (3 * u * tt * p2.y) + (ttt * p3.y)
       };
+    }
+
+    // Produces stable Bezier handles for all connection wires.
+    function connectionCurveFromPins(p0, p3) {
+      const dx = Math.max(44, Math.abs(p3.x - p0.x) * 0.5);
+      return {
+        p0,
+        p1: { x: p0.x + dx, y: p0.y },
+        p2: { x: p3.x - dx, y: p3.y },
+        p3
+      };
+    }
+
+    // Returns nearest sampled Bezier point for edge picking and wire taps.
+    function nearestPointOnBezierApprox(point, p0, p1, p2, p3) {
+      let bestDistance = Infinity;
+      let bestPoint = { ...p0 };
+      let bestT = 0;
+      const steps = 40;
+
+      for (let i = 0; i <= steps; i += 1) {
+        const t = i / steps;
+        const sample = cubicBezierPoint(p0, p1, p2, p3, t);
+        const d = worldDistance(point, sample);
+        if (d < bestDistance) {
+          bestDistance = d;
+          bestPoint = sample;
+          bestT = t;
+        }
+      }
+
+      return { point: bestPoint, distance: bestDistance, t: bestT };
     }
 
     function distanceToBezierApprox(point, p0, p1, p2, p3) {
