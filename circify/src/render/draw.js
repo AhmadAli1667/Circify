@@ -207,16 +207,16 @@ export function drawNode(ctx, node, selectedNodeID) {
     case 'DFF':     drawDFFBody(ctx, node); break;
     case 'SRLATCH': drawSRLatchBody(ctx, node); break;
     case 'INPUT': {
-      const stateLabel = node.outputState === null ? 'Z' : String(node.outputState);
+      const isHi  = node.outputState === SIGNAL.HIGH;
       const color = signalColor(node.outputState);
       ctx.save();
       ctx.fillStyle    = color;
-      ctx.shadowColor  = node.outputState === SIGNAL.HIGH ? color : 'transparent';
-      ctx.shadowBlur   = node.outputState === SIGNAL.HIGH ? 10 : 0;
+      ctx.shadowColor  = isHi ? color : 'transparent';
+      ctx.shadowBlur   = isHi ? 10 : 0;
       ctx.font         = `bold 18px ${MONO}`;
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(stateLabel, node.x + node.width * 0.46, node.y + node.height * 0.54);
+      ctx.fillText(isHi ? '1' : '0', node.x + node.width * 0.46, node.y + node.height * 0.54);
       ctx.restore();
       break;
     }

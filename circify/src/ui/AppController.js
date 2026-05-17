@@ -85,8 +85,12 @@ export class AppController {
     };
 
     this.selectedNodeID = null;
+    this.selectedNodeIDs = new Set();  // multi-select
     this.contextNodeID = null;
     this.contextEdgeID = null;
+
+    // Marquee selection state
+    this.marquee = null; // { startX, startY, endX, endY } in world coords
 
     // Sequential simulation
     this.simEngine = new SimEngine(this.graph);
@@ -106,11 +110,16 @@ export class AppController {
     this.bindKeyboard();
     this.resize();
     this.setTheme('cyber');
-    this.seedDemo();
     this.captureSnapshot();
     this.saveCurrentCircuit();
     this.updateZoomUI();
     requestAnimationFrame((t) => this.render(t));
+  }
+
+  clearSelection() {
+    this.selectedNodeID = null;
+    this.selectedNodeIDs.clear();
+    this.updatePropertiesPanel(null);
   }
 
   // ── Status ────────────────────────────────────────────────────────────────
@@ -277,9 +286,8 @@ export class AppController {
     document.getElementById('clearBtn').addEventListener('click', () => {
       this.captureSnapshot();
       this.graph.clear();
-      this.selectedNodeID = null;
       this.simEngine.syncGraph(this.graph);
-      this.updatePropertiesPanel(null);
+      this.clearSelection();
       this.saveCurrentCircuit();
       this.setStatus('Circuit cleared.');
     });
@@ -292,9 +300,8 @@ export class AppController {
       if (action === 'delete' && node) {
         this.captureSnapshot();
         this.graph.removeNode(node.id);
-        if (this.selectedNodeID === node.id) {
-          this.selectedNodeID = null;
-          this.updatePropertiesPanel(null);
+        if (this.selectedNodeID === node.id || this.selectedNodeIDs.has(node.id)) {
+          this.clearSelection();
         }
         this.saveCurrentCircuit();
         this.setStatus(`Deleted ${node.type} (${node.id}).`);
@@ -347,14 +354,18 @@ export class AppController {
       const tag = evt.target.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
-      if ((evt.key === 'Delete' || evt.key === 'Backspace') && this.selectedNodeID) {
-        evt.preventDefault();
-        this.captureSnapshot();
-        this.graph.removeNode(this.selectedNodeID);
-        this.selectedNodeID = null;
-        this.updatePropertiesPanel(null);
-        this.saveCurrentCircuit();
-        this.setStatus('Node deleted.');
+      if (evt.key === 'Delete' || evt.key === 'Backspace') {
+        const toDelete = this.selectedNodeIDs.size > 0
+          ? new Set(this.selectedNodeIDs)
+          : this.selectedNodeID ? new Set([this.selectedNodeID]) : new Set();
+        if (toDelete.size > 0) {
+          evt.preventDefault();
+          this.captureSnapshot();
+          for (const id of toDelete) this.graph.removeNode(id);
+          this.clearSelection();
+          this.saveCurrentCircuit();
+          this.setStatus(`Deleted ${toDelete.size} component(s).`);
+        }
         return;
       }
 
@@ -374,10 +385,10 @@ export class AppController {
         evt.preventDefault();
         this.interaction.connecting = null;
         this.interaction.snappedTarget = null;
-        if (this.selectedNodeID) {
-          this.selectedNodeID = null;
-          this.updatePropertiesPanel(null);
-        }
+        this.marquee = null;
+        this.selectedNodeIDs.clear();
+        this.selectedNodeID = null;
+        this.updatePropertiesPanel(null);
         this.hideContextMenu();
         return;
       }
@@ -644,8 +655,7 @@ export class AppController {
     this.captureSnapshot();
     this.graph.clear();
     this.simEngine.syncGraph(this.graph);
-    this.selectedNodeID = null;
-    this.updatePropertiesPanel(null);
+    this.clearSelection();
     this.viewport = { tx: this.canvas.clientWidth * 0.12, ty: this.canvas.clientHeight * 0.18, scale: 1 };
     this.saveCurrentCircuit();
   }
@@ -655,8 +665,7 @@ export class AppController {
     this.currentCircuitName = name;
     this.applySnapshot(this.circuits.get(name));
     this.simEngine.syncGraph(this.graph);
-    this.selectedNodeID = null;
-    this.updatePropertiesPanel(null);
+    this.clearSelection();
     this.setStatus(`Switched to "${name}".`);
   }
 
@@ -810,35 +819,11 @@ export class AppController {
     this.captureSnapshot();
     this.graph.fromObject(tpl);
     this.simEngine.syncGraph(this.graph);
-    this.selectedNodeID = null;
-    this.updatePropertiesPanel(null);
+    this.clearSelection();
     try { this.graph.stabilizeAll(); } catch (_) {}
     this.fitToCircuit();
     this.saveCurrentCircuit();
     this.setStatus(`Loaded template: ${tpl.name}.`);
-  }
-
-  seedDemo() {
-    const cx = this.canvas.clientWidth * 0.5 / 1 || 400;
-    const cy = this.canvas.clientHeight * 0.5 / 1 || 300;
-    const i0 = new InputSource(makeId('i'), 100, 160);
-    i0.label = 'A';
-    const i1 = new InputSource(makeId('i'), 100, 260);
-    i1.label = 'B';
-    const xor = new XorGate(makeId('g'), 280, 200, 2);
-    xor.label = 'XOR_1';
-    const out = new OutputProbe(makeId('o'), 460, 200);
-    out.label = 'SUM';
-    this.graph.addNode(i0);
-    this.graph.addNode(i1);
-    this.graph.addNode(xor);
-    this.graph.addNode(out);
-    this.graph.addConnection(i0.id, xor.id, 0);
-    this.graph.addConnection(i1.id, xor.id, 1);
-    this.graph.addConnection(xor.id, out.id, 0);
-    try { this.graph.stabilizeAll(); } catch (_) {}
-    this.viewport.tx = this.canvas.clientWidth * 0.12;
-    this.viewport.ty = this.canvas.clientHeight * 0.18;
   }
 
   // ── Context Menu ──────────────────────────────────────────────────────────
@@ -968,6 +953,7 @@ export class AppController {
       this.interaction.mouseWorld = world;
       this.interaction.clickStart = { x: world.x, y: world.y };
 
+      // Pan: middle mouse or shift+drag
       if (evt.button === 1 || (evt.button === 0 && evt.shiftKey)) {
         this.interaction.panning = true;
         this.interaction.panStart = { x: evt.clientX, y: evt.clientY };
@@ -977,15 +963,17 @@ export class AppController {
       if (evt.button !== 0) return;
       if (this.interaction.connecting) return;
 
+      // Output pin → start wire
       const pinHit = this.pickPin(world.x, world.y);
       if (pinHit && pinHit.kind === 'output') {
-        this.interaction.connecting = { sourceID: pinHit.node.id, from: { ...pinHit.pin }, to: { x: world.x, y: world.y } };
+        this.interaction.connecting = { sourceID: pinHit.node.id, from: { ...pinHit.pin }, to: { ...world } };
         return;
       }
 
+      // Edge tap → branch wire
       const edgeTap = this.pickEdgeWithPoint(world.x, world.y, 10);
       if (edgeTap) {
-        this.interaction.connecting = { sourceID: edgeTap.edge.sourceID, from: { ...edgeTap.point }, to: { x: world.x, y: world.y } };
+        this.interaction.connecting = { sourceID: edgeTap.edge.sourceID, from: { ...edgeTap.point }, to: { ...world } };
         this.interaction.snappedTarget = this.findMagneticPin(world.x, world.y, PIN_SNAP_RADIUS);
         if (this.interaction.snappedTarget) {
           this.interaction.connecting.to = { x: this.interaction.snappedTarget.pin.x, y: this.interaction.snappedTarget.pin.y };
@@ -994,17 +982,50 @@ export class AppController {
         return;
       }
 
+      // Node hit
       const node = this.pickNodeAt(world.x, world.y);
       if (node) {
-        this.selectedNodeID = node.id;
-        this.updatePropertiesPanel(node.id);
+        if (evt.ctrlKey || evt.metaKey) {
+          // Toggle in multi-select
+          if (this.selectedNodeIDs.has(node.id)) {
+            this.selectedNodeIDs.delete(node.id);
+            if (this.selectedNodeID === node.id) {
+              this.selectedNodeID = this.selectedNodeIDs.size > 0
+                ? this.selectedNodeIDs.values().next().value : null;
+            }
+          } else {
+            this.selectedNodeIDs.add(node.id);
+            this.selectedNodeID = node.id;
+          }
+          this.updatePropertiesPanel(this.selectedNodeID);
+          return;
+        }
+
+        if (!this.selectedNodeIDs.has(node.id)) {
+          this.selectedNodeIDs.clear();
+          this.selectedNodeIDs.add(node.id);
+          this.selectedNodeID = node.id;
+          this.updatePropertiesPanel(node.id);
+        } else {
+          this.selectedNodeID = node.id;
+        }
+
+        // Begin drag — capture offsets for all selected nodes
         this.interaction.dragSnapshot = this.graph.toJSON(this.viewport);
         this.interaction.draggingNodeID = node.id;
-        this.interaction.dragOffset = { x: world.x - node.x, y: world.y - node.y };
-      } else {
-        this.selectedNodeID = null;
-        this.updatePropertiesPanel(null);
+        this.interaction.multiDragOffsets = new Map();
+        for (const id of this.selectedNodeIDs) {
+          const n = this.graph.getNode(id);
+          if (n) this.interaction.multiDragOffsets.set(id, { dx: world.x - n.x, dy: world.y - n.y });
+        }
+        return;
       }
+
+      // Empty space → marquee
+      this.selectedNodeIDs.clear();
+      this.selectedNodeID = null;
+      this.updatePropertiesPanel(null);
+      this.marquee = { startX: world.x, startY: world.y, endX: world.x, endY: world.y };
     });
 
     this.canvas.addEventListener('pointermove', (evt) => {
@@ -1019,9 +1040,11 @@ export class AppController {
         return;
       }
 
-      if (this.interaction.draggingNodeID) {
-        const node = this.graph.getNode(this.interaction.draggingNodeID);
-        if (node) node.setPosition(world.x - this.interaction.dragOffset.x, world.y - this.interaction.dragOffset.y);
+      if (this.interaction.draggingNodeID && this.interaction.multiDragOffsets) {
+        for (const [id, off] of this.interaction.multiDragOffsets) {
+          const n = this.graph.getNode(id);
+          if (n) n.setPosition(snapToGrid(world.x - off.dx), snapToGrid(world.y - off.dy));
+        }
         return;
       }
 
@@ -1030,6 +1053,12 @@ export class AppController {
         const snap = this.findMagneticPin(world.x, world.y, PIN_SNAP_RADIUS);
         this.interaction.snappedTarget = snap;
         if (snap) this.interaction.connecting.to = { x: snap.pin.x, y: snap.pin.y };
+        return;
+      }
+
+      if (this.marquee) {
+        this.marquee.endX = world.x;
+        this.marquee.endY = world.y;
       }
     });
 
@@ -1042,8 +1071,32 @@ export class AppController {
         return;
       }
 
+      // Marquee finalize
+      if (this.marquee) {
+        const mx0 = Math.min(this.marquee.startX, this.marquee.endX);
+        const my0 = Math.min(this.marquee.startY, this.marquee.endY);
+        const mx1 = Math.max(this.marquee.startX, this.marquee.endX);
+        const my1 = Math.max(this.marquee.startY, this.marquee.endY);
+        if (mx1 - mx0 > 4 || my1 - my0 > 4) {
+          for (const node of this.graph.nodes.values()) {
+            const { x, y, width, height } = node.getAABB();
+            if (x < mx1 && x + width > mx0 && y < my1 && y + height > my0) {
+              this.selectedNodeIDs.add(node.id);
+            }
+          }
+          if (this.selectedNodeIDs.size > 0) {
+            this.selectedNodeID = this.selectedNodeIDs.values().next().value;
+            this.updatePropertiesPanel(this.selectedNodeID);
+            this.setStatus(`${this.selectedNodeIDs.size} component(s) selected.`);
+          }
+        }
+        this.marquee = null;
+        return;
+      }
+
       const draggingNodeID = this.interaction.draggingNodeID;
       this.interaction.draggingNodeID = null;
+      this.interaction.multiDragOffsets = null;
 
       if (this.interaction.connecting) {
         const sourceID = this.interaction.connecting.sourceID;
@@ -1086,14 +1139,14 @@ export class AppController {
           this.saveCurrentCircuit();
         }
         const clickStart = this.interaction.clickStart;
-        if (node.type === 'INPUT' && clickStart) {
+        if (node.type === 'INPUT' && clickStart && this.selectedNodeIDs.size <= 1) {
           if (worldDistance(clickStart, world) < 4) {
             this.captureSnapshot();
             node.cycleState();
             try { this.graph.stabilizeAll(); } catch (_) {}
             this.updatePropertiesPanel(this.selectedNodeID);
             this.saveCurrentCircuit();
-            this.setStatus(`Input ${node.label || node.id} → ${node.outputState === null ? 'Z (floating)' : node.outputState}.`);
+            this.setStatus(`Input ${node.label || node.id} → ${node.outputState === SIGNAL.HIGH ? '1' : '0'}.`);
           }
         }
       }
@@ -1139,8 +1192,26 @@ export class AppController {
     bctx.setTransform(this.viewport.scale, 0, 0, this.viewport.scale, this.viewport.tx, this.viewport.ty);
     drawGrid(bctx, this.viewport, width, height);
     drawConnections(bctx, this.graph.edges, this.graph.nodes, timeMs);
-    for (const node of this.graph.nodes.values()) drawNode(bctx, node, this.selectedNodeID);
+    for (const node of this.graph.nodes.values()) {
+      const selID = this.selectedNodeIDs.has(node.id) ? node.id : this.selectedNodeID;
+      drawNode(bctx, node, selID);
+    }
     drawConnectPreview(bctx, this.interaction.connecting, this.interaction.snappedTarget);
+    if (this.marquee) {
+      const { startX, startY, endX, endY } = this.marquee;
+      const mx = Math.min(startX, endX), my = Math.min(startY, endY);
+      const mw = Math.abs(endX - startX),  mh = Math.abs(endY - startY);
+      bctx.save();
+      bctx.strokeStyle = PALETTE.selected;
+      bctx.lineWidth   = 1.5 / this.viewport.scale;
+      bctx.setLineDash([6 / this.viewport.scale, 4 / this.viewport.scale]);
+      bctx.fillStyle   = PALETTE.selected + '18';
+      bctx.beginPath();
+      bctx.rect(mx, my, mw, mh);
+      bctx.fill();
+      bctx.stroke();
+      bctx.restore();
+    }
     bctx.restore();
 
     this.ctx.save();
@@ -1254,22 +1325,70 @@ export class AppController {
     const rowCodes = grayCodeList(rowBits);
     const colCodes = grayCodeList(colBits);
 
-    let html = `<table class="logic-table"><thead><tr><th>R\\C</th>${colCodes.map((c) => `<th>${c || '-'}</th>`).join('')}</tr></thead><tbody>`;
+    const minterms = rows.filter((r) => r.outBits[outIndex] === 1).map((r) => r.mask);
+    const inputNames = inputNodes.map((node) => node.label || node.id);
+    const implicants = quineMcCluskeyMinimize(n, minterms);
+
+    // Color palette for groups
+    const GROUP_COLORS = [
+      ['rgba(0,180,100,0.28)',  'rgba(0,180,100,0.85)',  '#00e07a'],
+      ['rgba(80,160,255,0.28)', 'rgba(80,160,255,0.85)', '#60b0ff'],
+      ['rgba(255,160,40,0.28)', 'rgba(255,160,40,0.85)', '#ffa030'],
+      ['rgba(220,60,220,0.28)', 'rgba(220,60,220,0.85)', '#dc3cdc'],
+      ['rgba(60,220,220,0.28)', 'rgba(60,220,220,0.85)', '#3cdcdc'],
+      ['rgba(255,80,80,0.28)',  'rgba(255,80,80,0.85)',  '#ff5050'],
+      ['rgba(200,200,0,0.28)',  'rgba(200,200,0,0.85)',  '#c8c800'],
+      ['rgba(180,80,255,0.28)', 'rgba(180,80,255,0.85)', '#b450ff'],
+    ];
+
+    // Map each minterm → first implicant index that covers it
+    const mintermColor = new Map();
+    implicants.forEach((imp, gi) => {
+      for (const m of imp.covered) {
+        if (!mintermColor.has(m)) mintermColor.set(m, gi);
+      }
+    });
+
+    // Build K-map table with colored cells
+    const varHeader = rowBits > 0
+      ? `${inputNames.slice(0, rowBits).join('')} \\ ${inputNames.slice(rowBits).join('')}`
+      : inputNames.slice(rowBits).join('');
+
+    let html = `<table class="kmap-table"><thead><tr>
+      <th class="kmap-corner">${escapeHtml(varHeader)}</th>
+      ${colCodes.map((c) => `<th class="kmap-head">${c || '0'}</th>`).join('')}
+    </tr></thead><tbody>`;
+
     for (let r = 0; r < rowCodes.length; r++) {
-      html += `<tr><th>${rowCodes[r] || '-'}</th>`;
+      html += `<tr><th class="kmap-head">${rowCodes[r] || '0'}</th>`;
       for (let c = 0; c < colCodes.length; c++) {
-        const idx = parseInt(`${rowCodes[r]}${colCodes[c]}` || '0', 2);
+        const combined = rowCodes[r] + colCodes[c];
+        const idx = combined ? parseInt(combined, 2) : 0;
         const v = rows[idx]?.outBits[outIndex] ?? 0;
-        html += `<td class="${v ? 'tt-one' : 'tt-zero'}">${v}</td>`;
+        const gi = mintermColor.get(idx);
+        const [bgColor, , textColor] = (gi !== undefined && v) ? GROUP_COLORS[gi % GROUP_COLORS.length] : ['', '', ''];
+        const style = bgColor ? `style="background:${bgColor};color:${textColor};font-weight:700;"` : '';
+        const cls = v ? 'kmap-one' : 'kmap-zero';
+        html += `<td class="${cls}" ${style}>${v}</td>`;
       }
       html += '</tr>';
     }
     html += '</tbody></table>';
     this.kmapWrap.innerHTML = html;
 
-    const minterms = rows.filter((r) => r.outBits[outIndex] === 1).map((r) => r.mask);
-    const inputNames = inputNodes.map((node) => node.label || node.id);
-    const implicants = quineMcCluskeyMinimize(n, minterms);
+    // Legend below the K-map
+    if (implicants.length > 0) {
+      const expr = implicantsToSOP(implicants, inputNames);
+      let legend = `<div class="kmap-legend">`;
+      implicants.forEach((imp, gi) => {
+        const [, borderColor, textColor] = GROUP_COLORS[gi % GROUP_COLORS.length];
+        const term = implicantsToSOP([imp], inputNames);
+        legend += `<span class="kmap-legend-item" style="border-color:${borderColor};color:${textColor}">${escapeHtml(term)}</span>`;
+      });
+      legend += `</div>`;
+      this.kmapWrap.insertAdjacentHTML('beforeend', legend);
+    }
+
     const expr = implicantsToSOP(implicants, inputNames);
 
     this.analysisState.simplified = {
@@ -1310,7 +1429,7 @@ export class AppController {
 
     const termOutputs = [];
     for (let t = 0; t < info.implicants.length; t++) {
-      const imp = info.implicants[t];
+      const imp = typeof info.implicants[t] === 'string' ? info.implicants[t] : info.implicants[t].bits;
       const literals = [];
       let y = 120 + t * 95;
       for (let i = 0; i < imp.length; i++) {

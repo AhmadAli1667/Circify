@@ -205,9 +205,7 @@ export class InputSource extends LogicComponent {
   }
 
   cycleState() {
-    if (this.outputState === SIGNAL.LOW) this.outputState = SIGNAL.HIGH;
-    else if (this.outputState === SIGNAL.HIGH) this.outputState = SIGNAL.FLOAT;
-    else this.outputState = SIGNAL.LOW;
+    this.outputState = this.outputState === SIGNAL.LOW ? SIGNAL.HIGH : SIGNAL.LOW;
   }
 
   evaluate() {

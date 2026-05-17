@@ -31,14 +31,14 @@ describe('quineMcCluskeyMinimize', () => {
   it('minimizes a single minterm', () => {
     const result = quineMcCluskeyMinimize(2, [3]);
     expect(result).toHaveLength(1);
-    expect(result[0]).toBe('11');
+    expect(result[0].bits).toBe('11');
   });
 
   it('minimizes adjacent minterms into a single implicant', () => {
     // minterms 0,1 (00, 01) → -0 or 0-
     const result = quineMcCluskeyMinimize(2, [0, 1]);
     expect(result).toHaveLength(1);
-    expect(result[0]).toContain('-');
+    expect(result[0].bits).toContain('-');
   });
 
   it('minimizes a 2-var AND function (only minterm 3)', () => {

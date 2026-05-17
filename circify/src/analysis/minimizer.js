@@ -104,17 +104,18 @@ export function quineMcCluskeyMinimize(numVars, minterms) {
     primes[bestIdx].covered.forEach((m) => uncovered.delete(m));
   }
 
-  return Array.from(selected).map((idx) => primes[idx].bits);
+  return Array.from(selected).map((idx) => ({ bits: primes[idx].bits, covered: primes[idx].covered }));
 }
 
 export function implicantsToSOP(implicants, varNames) {
   if (!implicants.length) return '0';
   const terms = implicants.map((imp) => {
+    const bits = typeof imp === 'string' ? imp : imp.bits;
     const parts = [];
-    for (let i = 0; i < imp.length; i++) {
-      if (imp[i] === '-') continue;
-      if (imp[i] === '1') parts.push(varNames[i]);
-      if (imp[i] === '0') parts.push(`${varNames[i]}'`);
+    for (let i = 0; i < bits.length; i++) {
+      if (bits[i] === '-') continue;
+      if (bits[i] === '1') parts.push(varNames[i]);
+      if (bits[i] === '0') parts.push(`${varNames[i]}'`);
     }
     return parts.length ? parts.join(' ') : '1';
   });
