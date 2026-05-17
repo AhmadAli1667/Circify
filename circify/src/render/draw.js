@@ -23,19 +23,18 @@ export function drawGrid(ctx, viewport, width, height) {
   const top    = -viewport.ty / viewport.scale;
   const right  = (width  - viewport.tx) / viewport.scale;
   const bottom = (height - viewport.ty) / viewport.scale;
+  const dotR   = 1.2 / viewport.scale;
   ctx.save();
-  ctx.lineWidth   = 1 / viewport.scale;
-  ctx.strokeStyle = PALETTE.grid;
-  ctx.beginPath();
+  ctx.fillStyle = PALETTE.grid;
   const sx = Math.floor(left / GRID_SIZE) * GRID_SIZE;
   const sy = Math.floor(top  / GRID_SIZE) * GRID_SIZE;
-  for (let x = sx; x <= Math.ceil(right  / GRID_SIZE) * GRID_SIZE; x += GRID_SIZE) {
-    ctx.moveTo(x, top); ctx.lineTo(x, bottom);
+  for (let x = sx; x <= right + GRID_SIZE; x += GRID_SIZE) {
+    for (let y = sy; y <= bottom + GRID_SIZE; y += GRID_SIZE) {
+      ctx.beginPath();
+      ctx.arc(x, y, dotR, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
-  for (let y = sy; y <= Math.ceil(bottom / GRID_SIZE) * GRID_SIZE; y += GRID_SIZE) {
-    ctx.moveTo(left, y); ctx.lineTo(right, y);
-  }
-  ctx.stroke();
   ctx.restore();
 }
 

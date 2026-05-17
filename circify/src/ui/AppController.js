@@ -55,6 +55,11 @@ export class AppController {
     this.kmapWrap = document.getElementById('kmapWrap');
     this.simplifiedExprBox = document.getElementById('simplifiedExprBox');
 
+    // FPS tracking
+    this._lastFrameTime = 0;
+    this._fpsFrames = 0;
+    this._fpsAccum = 0;
+
     this.analysisState = {
       rows: [],
       inputNodes: [],
@@ -158,6 +163,15 @@ export class AppController {
 
     document.getElementById('addInputBtn').addEventListener('click', () => this.addInput());
     document.getElementById('addOutputBtn').addEventListener('click', () => this.addOutput());
+
+    // Quick-gate buttons in topbar
+    document.querySelectorAll('.quick-gate-btn[data-quick-gate]').forEach((btn) => {
+      btn.addEventListener('click', () => this.addGate(btn.dataset.quickGate));
+    });
+    const qIn = document.querySelector('.quick-gate-btn[data-quick-input]');
+    const qOut = document.querySelector('.quick-gate-btn[data-quick-output]');
+    if (qIn) qIn.addEventListener('click', () => this.addInput());
+    if (qOut) qOut.addEventListener('click', () => this.addOutput());
 
     // Sequential
     document.getElementById('addClkBtn').addEventListener('click', () => this.addClock());
@@ -502,30 +516,30 @@ export class AppController {
     document.body.setAttribute('data-theme', mono ? 'mono' : 'cyber');
 
     if (mono) {
-      PALETTE.high      = '#111111';
-      PALETTE.low       = '#747474';
-      PALETTE.floating  = '#aaaaaa';
-      PALETTE.selected  = '#000000';
-      PALETTE.grid      = '#d8d8d8';
-      PALETTE.nodeFill0 = 'rgba(245, 245, 248, 0.97)';
-      PALETTE.nodeFill1 = 'rgba(230, 230, 235, 0.97)';
-      PALETTE.nodeStroke = '#999999';
-      PALETTE.nodeShadow = '#bbbbbb';
-      PALETTE.pinLabel   = '#555555';
+      PALETTE.high       = '#1a7a40';
+      PALETTE.low        = '#9a1f2e';
+      PALETTE.floating   = '#2a5a80';
+      PALETTE.selected   = '#1a7a40';
+      PALETTE.grid       = '#c8d0c8';
+      PALETTE.nodeFill0  = 'rgba(248, 250, 248, 0.97)';
+      PALETTE.nodeFill1  = 'rgba(232, 236, 232, 0.97)';
+      PALETTE.nodeStroke = '#c5d0c5';
+      PALETTE.nodeShadow = '#d0d8d0';
+      PALETTE.pinLabel   = '#4a5a4a';
     } else {
-      PALETTE.high      = '#00d15f';
-      PALETTE.low       = '#f04d4d';
-      PALETTE.floating  = '#4a6a80';
-      PALETTE.selected  = '#13d1a5';
-      PALETTE.grid      = '#1a2030';
-      PALETTE.nodeFill0 = 'rgba(22, 32, 48, 0.97)';
-      PALETTE.nodeFill1 = 'rgba(10, 16, 26, 0.97)';
-      PALETTE.nodeStroke = '#2e4055';
-      PALETTE.nodeShadow = '#0e1c2a';
-      PALETTE.pinLabel   = '#7a9ab2';
+      PALETTE.high       = '#41ee78';
+      PALETTE.low        = '#ffb3ae';
+      PALETTE.floating   = '#b4d6ef';
+      PALETTE.selected   = '#41ee78';
+      PALETTE.grid       = '#2e3d2e';
+      PALETTE.nodeFill0  = 'rgba(29, 32, 38, 0.97)';
+      PALETTE.nodeFill1  = 'rgba(16, 19, 26, 0.97)';
+      PALETTE.nodeStroke = '#3c4a3c';
+      PALETTE.nodeShadow = '#10131a';
+      PALETTE.pinLabel   = '#bbcbb8';
     }
 
-    this.setStatus(`Theme: ${mono ? 'B&W Light' : 'Cyber Dark'}.`);
+    this.setStatus(`Theme: ${mono ? 'Light' : 'Dark'}.`);
   }
 
   // ── Simulation ────────────────────────────────────────────────────────────
@@ -579,19 +593,18 @@ export class AppController {
   // ── Properties Panel ──────────────────────────────────────────────────────
 
   updatePropertiesPanel(nodeID) {
-    const panel = document.getElementById('propertiesPanel');
     const body = document.getElementById('propertiesBody');
-    if (!panel || !body) return;
+    if (!body) return;
+
     if (!nodeID) {
-      panel.style.display = 'none';
+      body.innerHTML = '<div class="prop-placeholder">No component selected.</div>';
       return;
     }
     const node = this.graph.getNode(nodeID);
     if (!node) {
-      panel.style.display = 'none';
+      body.innerHTML = '<div class="prop-placeholder">No component selected.</div>';
       return;
     }
-    panel.style.display = '';
 
     const pinState = (s) => (s === SIGNAL.HIGH ? '1' : s === SIGNAL.LOW ? '0' : 'Z');
     const sigClass = (s) => (s === SIGNAL.HIGH ? 'sig-high' : s === SIGNAL.LOW ? 'sig-low' : 'sig-float');
@@ -1178,13 +1191,34 @@ export class AppController {
   // ── Render Loop ───────────────────────────────────────────────────────────
 
   render(timeMs) {
+    // FPS tracking
+    const dt = this._lastFrameTime ? timeMs - this._lastFrameTime : 16;
+    this._lastFrameTime = timeMs;
+    this._fpsAccum += dt;
+    this._fpsFrames++;
+    if (this._fpsAccum >= 1000) {
+      const fps = Math.round(this._fpsFrames * 1000 / this._fpsAccum);
+      const fpsEl = document.getElementById('fpsDisplay');
+      if (fpsEl) fpsEl.textContent = `${fps} fps`;
+      this._fpsAccum = 0;
+      this._fpsFrames = 0;
+    }
+
+    // Mouse coords
+    const coordsEl = document.getElementById('mouseCoords');
+    if (coordsEl) {
+      const wx = Math.round(this.interaction.mouseWorld.x);
+      const wy = Math.round(this.interaction.mouseWorld.y);
+      coordsEl.textContent = `x: ${wx}, y: ${wy}`;
+    }
+
     const bctx = this.backCtx;
     const { width, height } = this.canvas;
 
     bctx.save();
     bctx.setTransform(1, 0, 0, 1, 0, 0);
     bctx.clearRect(0, 0, width, height);
-    bctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#0b0e14';
+    bctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--surface').trim() || '#10131a';
     bctx.fillRect(0, 0, width, height);
     bctx.restore();
 
@@ -1220,7 +1254,58 @@ export class AppController {
     this.ctx.drawImage(this.backCanvas, 0, 0, width, height);
     this.ctx.restore();
 
+    this.renderMinimap();
+
     requestAnimationFrame((t) => this.render(t));
+  }
+
+  renderMinimap() {
+    const canvas = document.getElementById('minimapCanvas');
+    if (!canvas) return;
+    const mw = canvas.offsetWidth, mh = canvas.offsetHeight;
+    if (mw < 1 || mh < 1) return;
+    if (canvas.width !== mw || canvas.height !== mh) {
+      canvas.width = mw;
+      canvas.height = mh;
+    }
+    const mctx = canvas.getContext('2d');
+    mctx.clearRect(0, 0, mw, mh);
+    mctx.fillStyle = PALETTE.nodeFill1;
+    mctx.fillRect(0, 0, mw, mh);
+
+    const nodes = Array.from(this.graph.nodes.values());
+    if (nodes.length === 0) return;
+
+    const pad = 40;
+    const minX = Math.min(...nodes.map((n) => n.x)) - pad;
+    const minY = Math.min(...nodes.map((n) => n.y)) - pad;
+    const maxX = Math.max(...nodes.map((n) => n.x + n.width)) + pad;
+    const maxY = Math.max(...nodes.map((n) => n.y + n.height)) + pad;
+    const ww = maxX - minX, wh = maxY - minY;
+    const scale = Math.min((mw * 0.9) / ww, (mh * 0.9) / wh);
+    const ox = (mw - ww * scale) / 2 - minX * scale;
+    const oy = (mh - wh * scale) / 2 - minY * scale;
+
+    for (const node of nodes) {
+      const nx = node.x * scale + ox;
+      const ny = node.y * scale + oy;
+      const nw = Math.max(3, node.width * scale);
+      const nh = Math.max(3, node.height * scale);
+      const isSelected = this.selectedNodeIDs.has(node.id) || this.selectedNodeID === node.id;
+      mctx.fillStyle = isSelected ? PALETTE.selected + 'cc' : PALETTE.nodeStroke + 'cc';
+      mctx.fillRect(nx, ny, nw, nh);
+    }
+
+    // Viewport rect
+    const vx = (-this.viewport.tx / this.viewport.scale) * scale + ox;
+    const vy = (-this.viewport.ty / this.viewport.scale) * scale + oy;
+    const vw = (this.canvas.width / this.viewport.scale) * scale;
+    const vh = (this.canvas.height / this.viewport.scale) * scale;
+    mctx.strokeStyle = PALETTE.selected;
+    mctx.lineWidth = 1;
+    mctx.setLineDash([3, 2]);
+    mctx.strokeRect(vx, vy, vw, vh);
+    mctx.setLineDash([]);
   }
 
   // ── Analysis ──────────────────────────────────────────────────────────────

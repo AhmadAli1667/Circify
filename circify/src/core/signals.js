@@ -24,17 +24,17 @@ export const ICON_PATHS = {
 // Mutable palette — updated by setTheme() in AppController so canvas colors match the UI theme
 export const PALETTE = {
   // Signal colors
-  high:       '#00d15f',
-  low:        '#f04d4d',
-  floating:   '#4a6a80',  // distinct from low; was incorrectly '#f04d4d' before
-  selected:   '#13d1a5',
+  high:       '#41ee78',
+  low:        '#ffb3ae',
+  floating:   '#b4d6ef',
+  selected:   '#41ee78',
   // Canvas / node rendering
-  grid:        '#1a2030',
-  nodeFill0:   'rgba(22, 32, 48, 0.97)',
-  nodeFill1:   'rgba(10, 16, 26, 0.97)',
-  nodeStroke:  '#2e4055',
-  nodeShadow:  '#0e1c2a',
-  pinLabel:    '#7a9ab2',
+  grid:        '#2e3d2e',
+  nodeFill0:   'rgba(29, 32, 38, 0.97)',
+  nodeFill1:   'rgba(16, 19, 26, 0.97)',
+  nodeStroke:  '#3c4a3c',
+  nodeShadow:  '#10131a',
+  pinLabel:    '#bbcbb8',
 };
 
 let _counter = 1;
