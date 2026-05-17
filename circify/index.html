@@ -11,281 +11,260 @@
 </head>
 <body>
   <div id="app">
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <div class="logo">
-          <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="8" width="4" height="8" rx="1"/><rect x="18" y="8" width="4" height="8" rx="1"/>
-            <rect x="8" y="4" width="8" height="16" rx="2"/>
-            <line x1="6" y1="11" x2="8" y2="11"/><line x1="6" y1="13" x2="8" y2="13"/>
-            <line x1="16" y1="11" x2="18" y2="11"/><line x1="16" y1="13" x2="18" y2="13"/>
-          </svg>
-          <span class="logo-text">CIRCIFY</span>
-        </div>
-        <div class="tagline">Logic CAD Workspace</div>
+
+    <!-- ── Topbar ─────────────────────────────────────── -->
+    <header class="topbar">
+      <div class="topbar-logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="8" width="4" height="8" rx="1"/>
+          <rect x="18" y="8" width="4" height="8" rx="1"/>
+          <rect x="8" y="4" width="8" height="16" rx="2"/>
+          <line x1="6" y1="11" x2="8" y2="11"/>
+          <line x1="6" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="11" x2="18" y2="11"/>
+          <line x1="16" y1="13" x2="18" y2="13"/>
+        </svg>
+        <span class="logo-text">CIRCIFY</span>
       </div>
 
-      <div class="sidebar-scroll">
+      <div class="topbar-divider"></div>
 
-        <!-- View -->
-        <details class="panel-section" open>
-          <summary>
-            <span class="section-label"><span class="section-icon">◈</span> View</span>
-            <span class="panel-arrow">▾</span>
-          </summary>
-          <div class="section-body">
-            <div class="toolbar-grid">
-              <button id="zoomInBtn">＋ Zoom</button>
-              <button id="zoomOutBtn">－ Zoom</button>
-            </div>
-            <div class="toolbar-grid">
-              <button id="zoomResetBtn">⌂ Reset</button>
-              <button id="exportJsonBtn">↓ Export</button>
-            </div>
-            <select class="theme-select" id="themeSelect">
-              <option value="cyber">Cyber Dark</option>
-              <option value="mono">B&amp;W Light</option>
-            </select>
-          </div>
-        </details>
+      <!-- Circuit selector -->
+      <div class="topbar-group">
+        <select id="circuitSelect" class="top-select" title="Switch circuit"></select>
+        <button id="newCircuitBtn" class="top-btn" title="New circuit">＋</button>
+        <button id="saveCircuitBtn" class="top-btn" title="Save circuit">⊙</button>
+        <button id="deleteCircuitBtn" class="top-btn top-btn-danger" title="Delete circuit">⊗</button>
+      </div>
 
-        <!-- Project -->
-        <details class="panel-section" open>
-          <summary>
-            <span class="section-label"><span class="section-icon">⊞</span> Project</span>
-            <span class="panel-arrow">▾</span>
-          </summary>
-          <div class="section-body">
-            <select class="theme-select" id="circuitSelect"></select>
-            <div class="toolbar-grid triple">
-              <button id="newCircuitBtn">New</button>
-              <button id="saveCircuitBtn">Save</button>
-              <button id="deleteCircuitBtn">Delete</button>
-            </div>
-            <div class="toolbar-grid">
-              <button id="undoBtn">↶ Undo</button>
-              <button id="redoBtn">↷ Redo</button>
-            </div>
-          </div>
-        </details>
+      <div class="topbar-divider"></div>
 
-        <!-- Simulation Controls -->
-        <details class="panel-section" open>
-          <summary>
-            <span class="section-label"><span class="section-icon">▶</span> Simulation</span>
-            <span class="panel-arrow">▾</span>
-          </summary>
-          <div class="section-body">
-            <div class="sim-controls">
-              <button id="simPlayBtn" class="sim-btn play-btn" title="Play (runs clock continuously)">▶ Play</button>
-              <button id="simPauseBtn" class="sim-btn pause-btn" title="Pause clock">⏸ Pause</button>
-              <button id="simStepBtn" class="sim-btn step-btn" title="Single step (Space)">⏭ Step</button>
-              <button id="simResetBtn" class="sim-btn reset-btn" title="Reset clock and history">⟲ Reset</button>
-            </div>
-            <div class="speed-row">
-              <span class="speed-label">Speed</span>
-              <input id="simSpeedSlider" type="range" min="1" max="20" value="2" step="1" class="speed-slider" />
-              <span id="simSpeedLabel" class="speed-val">2 Hz</span>
-            </div>
-            <div class="tick-row">
-              <span class="tick-label">Tick</span>
-              <span id="simTickCount" class="tick-count">0</span>
-              <button id="toggleTimingBtn" class="timing-toggle-btn">⊻ Waveform</button>
-            </div>
-          </div>
-        </details>
+      <!-- Sim controls -->
+      <div class="topbar-group topbar-sim">
+        <button id="simResetBtn" class="sim-top-btn reset-btn" title="Reset simulation">⟲</button>
+        <button id="simStepBtn"  class="sim-top-btn step-btn"  title="Step (Space)">⏭</button>
+        <button id="simPlayBtn"  class="sim-top-btn play-btn"  title="Play">▶</button>
+        <button id="simPauseBtn" class="sim-top-btn pause-btn" title="Pause">⏸</button>
+        <div class="sim-speed-row">
+          <input id="simSpeedSlider" type="range" min="1" max="20" value="2" step="1" class="top-range" title="Clock speed" />
+          <span id="simSpeedLabel" class="sim-speed-val">2 Hz</span>
+        </div>
+        <span class="sim-tick-label">Tick</span>
+        <span id="simTickCount" class="sim-tick-count">0</span>
+      </div>
 
-        <!-- Logic Gates -->
-        <details class="panel-section" open>
-          <summary>
-            <span class="section-label"><span class="section-icon">⊗</span> Gates</span>
-            <span class="panel-arrow">▾</span>
-          </summary>
-          <div class="section-body">
-            <div class="btn-grid" id="gateButtons"></div>
-          </div>
-        </details>
+      <div class="topbar-divider"></div>
 
-        <!-- I/O Pins -->
-        <details class="panel-section" open>
-          <summary>
-            <span class="section-label"><span class="section-icon">⬡</span> I/O Pins</span>
-            <span class="panel-arrow">▾</span>
-          </summary>
-          <div class="section-body">
+      <!-- Actions -->
+      <div class="topbar-group topbar-actions">
+        <button id="undoBtn"      class="top-btn" title="Undo (Ctrl+Z)">↶</button>
+        <button id="redoBtn"      class="top-btn" title="Redo (Ctrl+Y)">↷</button>
+        <button id="exportJsonBtn" class="top-btn" title="Export JSON">↓ JSON</button>
+        <select id="themeSelect" class="top-select" title="Theme">
+          <option value="cyber">Cyber Dark</option>
+          <option value="mono">B&amp;W Light</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- ── Body: Sidebar + Canvas ─────────────────────── -->
+    <div class="body-row">
+
+      <!-- ── Sidebar ──────────────────────────────────── -->
+      <aside class="sidebar">
+
+        <!-- Tab strip -->
+        <div class="tab-strip">
+          <button class="tab-btn active" data-tab="gates">Gates</button>
+          <button class="tab-btn" data-tab="sim">Sim</button>
+          <button class="tab-btn" data-tab="data">Data</button>
+        </div>
+
+        <!-- Gates tab -->
+        <div class="tab-pane active" id="tab-gates">
+          <div class="pane-scroll">
+
+            <div class="pane-section-label">I / O</div>
             <div class="io-grid">
               <button id="addInputBtn" class="io-btn input-btn">⬤ Input</button>
               <button id="addOutputBtn" class="io-btn output-btn">◎ Output</button>
             </div>
-          </div>
-        </details>
 
-        <!-- Sequential Components -->
-        <details class="panel-section">
-          <summary>
-            <span class="section-label"><span class="section-icon">⏱</span> Sequential</span>
-            <span class="panel-arrow">▾</span>
-          </summary>
-          <div class="section-body">
+            <div class="pane-section-label">Logic Gates</div>
+            <div class="btn-grid" id="gateButtons"></div>
+
+            <div class="pane-section-label">Sequential</div>
             <div class="seq-grid">
-              <button id="addClkBtn" class="seq-btn clk-btn">⊙ CLK</button>
-              <button id="addDFFBtn" class="seq-btn dff-btn">▷ DFF</button>
-              <button id="addSRLatchBtn" class="seq-btn sr-btn">SR Latch</button>
+              <button id="addClkBtn"    class="seq-btn clk-btn">⊙ CLK</button>
+              <button id="addDFFBtn"    class="seq-btn dff-btn">▷ DFF</button>
+              <button id="addSRLatchBtn" class="seq-btn sr-btn">SR</button>
             </div>
-            <div class="seq-hint">Connect CLK output to DFF clk pin. Use Play/Step to advance.</div>
-          </div>
-        </details>
 
-        <!-- Properties Panel (shown when node is selected) -->
-        <details class="panel-section" id="propertiesPanel" style="display:none" open>
-          <summary>
-            <span class="section-label"><span class="section-icon">◆</span> Properties</span>
-            <span class="panel-arrow">▾</span>
-          </summary>
-          <div class="section-body" id="propertiesBody">
-            <div class="prop-placeholder">No component selected.</div>
-          </div>
-        </details>
+            <div class="pane-section-label">Templates</div>
+            <select id="templateSelect" class="pane-select">
+              <option value="">— choose template —</option>
+              <option value="half-adder">Half Adder</option>
+              <option value="full-adder">Full Adder</option>
+              <option value="sr-latch">SR Latch</option>
+              <option value="dff-demo">D Flip-Flop</option>
+              <option value="counter">2-bit Counter</option>
+              <option value="mux">4:1 Multiplexer</option>
+            </select>
+            <button id="loadTemplateBtn" class="pane-btn">Load Template</button>
 
-        <!-- Verilog / Data -->
-        <details class="panel-section">
-          <summary>
-            <span class="section-label"><span class="section-icon">{ }</span> Verilog / Data</span>
-            <span class="panel-arrow">▾</span>
-          </summary>
-          <div class="section-body">
+          </div>
+        </div>
+
+        <!-- Sim tab -->
+        <div class="tab-pane" id="tab-sim">
+          <div class="pane-scroll">
+
+            <div class="pane-section-label">View</div>
+            <div class="view-grid">
+              <button id="zoomInBtn"    class="view-btn">＋ Zoom</button>
+              <button id="zoomOutBtn"   class="view-btn">－ Zoom</button>
+              <button id="zoomResetBtn" class="view-btn">⌂ Reset</button>
+            </div>
+            <div class="zoom-row">
+              <span class="zoom-label">Zoom</span>
+              <input id="zoomSlider" type="range" min="70" max="180" value="100" class="zoom-range" />
+              <span id="zoomPct" class="zoom-pct">100%</span>
+            </div>
+
+            <div class="pane-section-label">Actions</div>
+            <div class="view-grid">
+              <button id="locateTopBtn"  class="view-btn">⌖ Fit</button>
+              <button id="runTopBtn"     class="view-btn run-btn">▶ Stab.</button>
+              <button id="analyzeTopBtn" class="view-btn">≡ Analyze</button>
+            </div>
+
+            <div class="pane-section-label">Waveform</div>
+            <button id="toggleTimingBtn" class="pane-btn timing-toggle-btn">⊻ Waveform Viewer</button>
+
+            <div class="pane-section-label">Controls</div>
+            <div class="controls-list">
+              <div class="control-row"><span class="kbd">LMB drag</span> move gate</div>
+              <div class="control-row"><span class="kbd">LMB pin</span> draw wire</div>
+              <div class="control-row"><span class="kbd">LMB Input</span> toggle 0/1/Z</div>
+              <div class="control-row"><span class="kbd">Shift+drag</span> pan</div>
+              <div class="control-row"><span class="kbd">Wheel</span> zoom</div>
+              <div class="control-row"><span class="kbd">RMB</span> context menu</div>
+              <div class="control-row"><span class="kbd">Space</span> step</div>
+              <div class="control-row"><span class="kbd">Del</span> delete</div>
+              <div class="control-row"><span class="kbd">Ctrl+Z / Y</span> undo/redo</div>
+              <div class="control-row"><span class="kbd">F</span> fit to circuit</div>
+              <div class="control-row"><span class="kbd">Esc</span> cancel / deselect</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Data tab -->
+        <div class="tab-pane" id="tab-data">
+          <div class="pane-scroll">
+
+            <div class="pane-section-label">Serialize</div>
             <div class="io-grid">
-              <button id="saveBtn">↓ JSON</button>
-              <button id="loadBtn">↑ JSON</button>
+              <button id="saveBtn"    class="io-btn">↓ JSON</button>
+              <button id="loadBtn"    class="io-btn">↑ Load</button>
             </div>
             <div class="io-grid">
-              <button id="verilogBtn">Verilog</button>
-              <button id="clearBtn">✕ Clear</button>
+              <button id="verilogBtn" class="io-btn">{ } Verilog</button>
+              <button id="clearBtn"   class="io-btn danger-btn">✕ Clear</button>
             </div>
             <textarea id="dataBox" spellcheck="false" placeholder="JSON / Verilog output…"></textarea>
-          </div>
-        </details>
 
-        <!-- Keyboard Controls -->
-        <details class="panel-section">
-          <summary>
-            <span class="section-label"><span class="section-icon">⌨</span> Controls</span>
-            <span class="panel-arrow">▾</span>
-          </summary>
-          <div class="section-body controls-list">
-            <div class="control-row"><span class="kbd">LMB</span> drag gate → move</div>
-            <div class="control-row"><span class="kbd">LMB</span> output pin → wire</div>
-            <div class="control-row"><span class="kbd">LMB</span> Input body → toggle 0/1/Z</div>
-            <div class="control-row"><span class="kbd">MMB</span> / <span class="kbd">Shift+drag</span> → pan</div>
-            <div class="control-row"><span class="kbd">Wheel</span> → zoom in/out</div>
-            <div class="control-row"><span class="kbd">RMB</span> → context menu</div>
-            <div class="control-row"><span class="kbd">Space</span> → single step</div>
-            <div class="control-row"><span class="kbd">Del</span> → delete selected</div>
-            <div class="control-row"><span class="kbd">Ctrl+Z</span> → undo</div>
-            <div class="control-row"><span class="kbd">Ctrl+Y</span> → redo</div>
-            <div class="control-row"><span class="kbd">F</span> → fit to circuit</div>
-            <div class="control-row"><span class="kbd">Esc</span> → deselect / cancel</div>
-          </div>
-        </details>
-
-        <!-- AI Helper -->
-        <details class="panel-section">
-          <summary>
-            <span class="section-label"><span class="section-icon">✦</span> AI Helper</span>
-            <span class="panel-arrow">▾</span>
-          </summary>
-          <div class="section-body">
-            <select class="theme-select" id="aiProviderSelect">
+            <div class="pane-section-label">AI Helper</div>
+            <select id="aiProviderSelect" class="pane-select">
               <option value="chatgpt">ChatGPT</option>
               <option value="gemini">Gemini</option>
               <option value="perplexity">Perplexity</option>
             </select>
-            <textarea id="aiPromptBox" spellcheck="false" placeholder="Ask about your circuit logic…"></textarea>
+            <textarea id="aiPromptBox" spellcheck="false" placeholder="Ask about your circuit…" style="height:80px"></textarea>
             <div class="io-grid">
-              <button id="askAIBtn">Ask AI</button>
-              <button id="insertCircuitSummaryBtn">Summarize</button>
+              <button id="askAIBtn"               class="io-btn">Ask AI</button>
+              <button id="insertCircuitSummaryBtn" class="io-btn">Summarize</button>
             </div>
+
           </div>
-        </details>
-
-      </div><!-- /sidebar-scroll -->
-
-      <div class="sidebar-footer">
-        <span class="status-dot" id="statusDot"></span>
-        <span class="status" id="statusLine">Ready.</span>
-      </div>
-    </aside>
-
-    <section id="workspace">
-      <canvas id="simCanvas"></canvas>
-
-      <!-- Floating toolbar (top-right) -->
-      <div class="workspace-tools">
-        <button id="locateTopBtn" class="tool-btn">⌖ Locate</button>
-        <button id="runTopBtn" class="tool-btn run-btn">▶ Stabilize</button>
-        <button id="analyzeTopBtn" class="tool-btn">≡ Analyze</button>
-      </div>
-
-      <!-- Zoom dock (bottom-right) -->
-      <div class="zoom-dock">
-        <div class="zoom-label">
-          <span>Zoom</span>
-          <span id="zoomPct">100%</span>
         </div>
-        <input id="zoomSlider" type="range" min="70" max="180" value="100" />
-      </div>
 
-      <!-- Context menu -->
-      <div class="context-menu" id="contextMenu">
-        <button class="context-item" data-action="toggle-inputs">⇌ Cycle Inputs 2/3/4</button>
-        <button class="context-item" data-action="rename">✎ Rename</button>
-        <button class="context-item danger" data-action="delete-wire">╌ Delete Wire</button>
-        <button class="context-item danger" data-action="delete">✕ Delete</button>
-      </div>
-
-      <!-- Timing diagram panel (bottom overlay) -->
-      <div id="timingPanel" class="timing-panel" style="display:none">
-        <div class="timing-header">
-          <span class="timing-title">⊻ Waveform Viewer</span>
-          <button id="closeTimingBtn" class="close-btn timing-close">✕</button>
+        <!-- Properties panel — always visible at sidebar bottom -->
+        <div class="properties-panel" id="propertiesPanel" style="display:none">
+          <div class="prop-header">
+            <span class="prop-title">◆ Properties</span>
+          </div>
+          <div class="prop-body" id="propertiesBody">
+            <div class="prop-placeholder">No component selected.</div>
+          </div>
         </div>
-        <canvas id="timingCanvas" class="timing-canvas"></canvas>
-      </div>
 
-      <!-- Analysis overlay -->
-      <div class="analysis-overlay" id="analysisOverlay">
-        <div class="analysis-window">
-          <div class="analysis-header">
-            <div class="analysis-title">
-              <span class="analysis-icon">≡</span>
-              <strong>Logic Analysis</strong>
-            </div>
-            <button id="closeAnalysisBtn" class="close-btn">✕</button>
+      </aside>
+
+      <!-- ── Canvas workspace ──────────────────────────── -->
+      <section id="workspace">
+        <canvas id="simCanvas"></canvas>
+
+        <!-- Context menu -->
+        <div class="context-menu" id="contextMenu">
+          <button class="context-item" data-action="toggle-inputs">⇌ Cycle Inputs 2/3/4</button>
+          <button class="context-item" data-action="rename">✎ Rename</button>
+          <button class="context-item danger" data-action="delete-wire">╌ Delete Wire</button>
+          <button class="context-item danger" data-action="delete">✕ Delete</button>
+        </div>
+
+        <!-- Timing diagram (bottom overlay) -->
+        <div id="timingPanel" class="timing-panel" style="display:none">
+          <div class="timing-header">
+            <span class="timing-title">⊻ Waveform Viewer</span>
+            <button id="closeTimingBtn" class="close-btn">✕</button>
           </div>
-          <div class="analysis-actions">
-            <button id="buildTruthTableBtn">Build Truth Table</button>
-            <select id="kmapOutputSelect" class="theme-select" style="margin-top:0">
-              <option value="">Select Output</option>
-            </select>
-            <button id="drawKmapBtn">Draw K-Map</button>
-            <button id="drawSimplifiedBtn">Simplified Circuit</button>
-          </div>
-          <div class="analysis-grid">
-            <div>
-              <div class="subtitle" style="margin-top:0">Truth Table</div>
-              <div class="table-wrap" id="truthTableWrap"></div>
+          <canvas id="timingCanvas" class="timing-canvas"></canvas>
+        </div>
+
+        <!-- Analysis overlay -->
+        <div class="analysis-overlay" id="analysisOverlay">
+          <div class="analysis-window">
+            <div class="analysis-header">
+              <div class="analysis-title">
+                <span class="analysis-icon">≡</span>
+                <strong>Logic Analysis</strong>
+              </div>
+              <button id="closeAnalysisBtn" class="close-btn">✕</button>
             </div>
-            <div>
-              <div class="subtitle" style="margin-top:0">K-Map</div>
-              <div class="table-wrap" id="kmapWrap"></div>
-              <div class="subtitle">Simplified SOP</div>
-              <div class="expr-box" id="simplifiedExprBox">Build truth table first.</div>
+            <div class="analysis-actions">
+              <button id="buildTruthTableBtn">Build Truth Table</button>
+              <select id="kmapOutputSelect" class="pane-select" style="margin-top:0">
+                <option value="">Select Output</option>
+              </select>
+              <button id="drawKmapBtn">Draw K-Map</button>
+              <button id="drawSimplifiedBtn">Simplified Circuit</button>
+            </div>
+            <div class="analysis-grid">
+              <div>
+                <div class="subtitle" style="margin-top:0">Truth Table</div>
+                <div class="table-wrap" id="truthTableWrap"></div>
+              </div>
+              <div>
+                <div class="subtitle" style="margin-top:0">K-Map</div>
+                <div class="table-wrap" id="kmapWrap"></div>
+                <div class="subtitle">Simplified SOP</div>
+                <div class="expr-box" id="simplifiedExprBox">Build truth table first.</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
-  </div>
+      </section>
+
+    </div><!-- /body-row -->
+
+    <!-- ── Bottombar ──────────────────────────────────── -->
+    <footer class="bottombar">
+      <span class="status-dot" id="statusDot"></span>
+      <span class="status-text" id="statusLine">Ready.</span>
+    </footer>
+
+  </div><!-- /app -->
 
   <script type="module" src="/src/main.js"></script>
 </body>

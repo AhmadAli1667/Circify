@@ -28,6 +28,7 @@ import { drawGrid, drawConnections, drawNode, drawConnectPreview } from '../rend
 import { connectionCurveFromPins, nearestPointOnBezierApprox } from '../render/bezier.js';
 import { quineMcCluskeyMinimize, implicantsToSOP, grayCodeList } from '../analysis/minimizer.js';
 import { toVerilog } from '../io/verilog.js';
+import { getTemplate } from './templates.js';
 
 function escapeHtml(text) {
   return String(text)
@@ -124,6 +125,18 @@ export class AppController {
   // ── UI Bindings ───────────────────────────────────────────────────────────
 
   bindUI() {
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tabName = btn.dataset.tab;
+        document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach((p) => p.classList.remove('active'));
+        btn.classList.add('active');
+        const pane = document.getElementById(`tab-${tabName}`);
+        if (pane) pane.classList.add('active');
+      });
+    });
+
     const gateButtons = document.getElementById('gateButtons');
     TYPE_LIST.forEach((type) => {
       const btn = document.createElement('button');
@@ -141,6 +154,12 @@ export class AppController {
     document.getElementById('addClkBtn').addEventListener('click', () => this.addClock());
     document.getElementById('addDFFBtn').addEventListener('click', () => this.addDFF());
     document.getElementById('addSRLatchBtn').addEventListener('click', () => this.addSRLatch());
+
+    // Templates
+    document.getElementById('loadTemplateBtn').addEventListener('click', () => {
+      const id = document.getElementById('templateSelect').value;
+      if (id) this.loadTemplate(id);
+    });
 
     // View controls
     document.getElementById('zoomInBtn').addEventListener('click', () => this.stepZoom(1.15));
@@ -468,12 +487,34 @@ export class AppController {
   // ── Theme ─────────────────────────────────────────────────────────────────
 
   setTheme(themeName) {
-    document.body.setAttribute('data-theme', themeName === 'mono' ? 'mono' : 'cyber');
-    PALETTE.high = '#00d15f';
-    PALETTE.low = '#f04d4d';
-    PALETTE.floating = '#f04d4d';
-    PALETTE.selected = themeName === 'mono' ? '#000000' : '#13d1a5';
-    this.setStatus(`Theme: ${themeName === 'mono' ? 'B&W Light' : 'Cyber Dark'}.`);
+    const mono = themeName === 'mono';
+    document.body.setAttribute('data-theme', mono ? 'mono' : 'cyber');
+
+    if (mono) {
+      PALETTE.high      = '#111111';
+      PALETTE.low       = '#747474';
+      PALETTE.floating  = '#aaaaaa';
+      PALETTE.selected  = '#000000';
+      PALETTE.grid      = '#d8d8d8';
+      PALETTE.nodeFill0 = 'rgba(245, 245, 248, 0.97)';
+      PALETTE.nodeFill1 = 'rgba(230, 230, 235, 0.97)';
+      PALETTE.nodeStroke = '#999999';
+      PALETTE.nodeShadow = '#bbbbbb';
+      PALETTE.pinLabel   = '#555555';
+    } else {
+      PALETTE.high      = '#00d15f';
+      PALETTE.low       = '#f04d4d';
+      PALETTE.floating  = '#4a6a80';
+      PALETTE.selected  = '#13d1a5';
+      PALETTE.grid      = '#1a2030';
+      PALETTE.nodeFill0 = 'rgba(22, 32, 48, 0.97)';
+      PALETTE.nodeFill1 = 'rgba(10, 16, 26, 0.97)';
+      PALETTE.nodeStroke = '#2e4055';
+      PALETTE.nodeShadow = '#0e1c2a';
+      PALETTE.pinLabel   = '#7a9ab2';
+    }
+
+    this.setStatus(`Theme: ${mono ? 'B&W Light' : 'Cyber Dark'}.`);
   }
 
   // ── Simulation ────────────────────────────────────────────────────────────
@@ -761,6 +802,20 @@ export class AppController {
     this.updatePropertiesPanel(node.id);
     this.saveCurrentCircuit();
     this.setStatus('SR Latch added. Connect S and R pins.');
+  }
+
+  loadTemplate(id) {
+    const tpl = getTemplate(id);
+    if (!tpl) { this.setStatus(`Template "${id}" not found.`, true); return; }
+    this.captureSnapshot();
+    this.graph.fromObject(tpl);
+    this.simEngine.syncGraph(this.graph);
+    this.selectedNodeID = null;
+    this.updatePropertiesPanel(null);
+    try { this.graph.stabilizeAll(); } catch (_) {}
+    this.fitToCircuit();
+    this.saveCurrentCircuit();
+    this.setStatus(`Loaded template: ${tpl.name}.`);
   }
 
   seedDemo() {
@@ -1085,7 +1140,7 @@ export class AppController {
     drawGrid(bctx, this.viewport, width, height);
     drawConnections(bctx, this.graph.edges, this.graph.nodes, timeMs);
     for (const node of this.graph.nodes.values()) drawNode(bctx, node, this.selectedNodeID);
-    drawConnectPreview(bctx, this.interaction.connecting, this.interaction.snappedTarget, this.viewport);
+    drawConnectPreview(bctx, this.interaction.connecting, this.interaction.snappedTarget);
     bctx.restore();
 
     this.ctx.save();
