@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- Declares this as an HTML5 document — tells browsers to use modern rendering mode -->
+<html lang="en">
+  <!-- Opens the HTML root element; lang="en" tells assistive tools the page is in English -->
+  <head>
+    <!-- The <head> section holds metadata — none of this is visible on screen -->
+    <meta charset="UTF-8" />
+    <!-- Sets character encoding to UTF-8, supporting all languages, symbols, and emoji -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Links the browser tab icon (favicon); points to an SVG file in the project root -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Makes the page scale correctly on mobile devices; without this it looks zoomed out -->
+    <title>flixmate</title>
+    <!-- Sets the text shown in the browser tab and bookmarks -->
+  </head>
+  <body>
+    <!-- The <body> contains everything visible on the page -->
+    <div id="root"></div>
+    <!-- This empty div is the mount point; React will inject the entire app inside it -->
+    <script type="module" src="/src/main.jsx"></script>
+    <!-- Loads the React entry point as an ES module; Vite processes this file first -->
+  </body>
+</html>
