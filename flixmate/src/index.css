@@ -1,64 +1,38 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Roboto:wght@400;500;700&display=swap');
-/* Loads Inter (weights 400–900) and Roboto (400, 500, 700) from Google Fonts CDN; display=swap shows fallback font while loading */
 
 @tailwind base;
-/* Injects Tailwind's base reset — normalizes browser default styles across Chrome, Firefox, Safari, etc. */
-
 @tailwind components;
-/* Injects Tailwind's component layer — where reusable class groups (like .btn) would live if defined */
-
 @tailwind utilities;
-/* Injects all Tailwind utility classes — bg-*, text-*, flex, grid, p-*, m-*, etc. */
 
 :root {
-  /* CSS custom properties on the root element — inherited by every element on the page */
   color-scheme: dark;
-  /* Tells the browser this is a dark UI — dark color-scheme affects system scrollbars, form inputs, and media queries */
 }
 
 * {
-  /* Applies to every single HTML element via the universal selector */
   scrollbar-width: thin;
-  /* Firefox: makes all scrollbars use the thin style (narrower than default) */
   scrollbar-color: #e50914 #121212;
-  /* Firefox: sets scrollbar thumb to Netflix-red and the track to dark-surface */
 }
 
 *::-webkit-scrollbar {
-  /* Targets the scrollbar track element in Chrome, Edge, and Safari */
   height: 9px;
-  /* Sets horizontal scrollbar height to 9px */
   width: 9px;
-  /* Sets vertical scrollbar width to 9px */
 }
 
 *::-webkit-scrollbar-track {
-  /* Styles the scrollbar track (the background rail behind the thumb) in WebKit browsers */
   background: #121212;
-  /* Dark surface color — matches the app's card/surface background */
 }
 
 *::-webkit-scrollbar-thumb {
-  /* Styles the draggable scrollbar thumb in WebKit browsers */
   background: #e50914;
-  /* Netflix-red — makes the scrollbar thumb a branded accent color */
   border-radius: 999px;
-  /* Makes the thumb fully pill-shaped — 999px is a common trick to ensure full rounding */
 }
 
 body {
-  /* Styles applied to the page body element — every visible element lives here */
   margin: 0;
-  /* Removes the browser's default body margin (some browsers add 8px by default) */
   font-family: 'Inter', 'Roboto', sans-serif;
-  /* Sets the app-wide font; Inter first, Roboto as fallback, then any system sans-serif */
   background:
     radial-gradient(1200px 500px at 90% -10%, rgba(229, 9, 20, 0.2), transparent),
-    /* First radial glow: large red bloom in the top-right corner at 20% opacity */
     radial-gradient(700px 300px at 0% 20%, rgba(229, 9, 20, 0.16), transparent),
-    /* Second radial glow: smaller red bloom on the left side at 16% opacity */
     #050505;
-    /* Base background color — near-black; the gradients layer on top of this */
   color: #ffffff;
-  /* Default text color is white — applies to any text not explicitly colored by Tailwind classes */
 }

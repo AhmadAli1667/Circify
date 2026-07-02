@@ -1,54 +1,25 @@
 const actorRecords = [
-  // Array of all 23 actor objects — each object defines one actor's complete profile
-
   {
-    slug: 'mia-wasikowska',
-    // URL-friendly identifier used in the browser hash: #/actor/mia-wasikowska
-    name: 'Mia Wasikowska',
-    // Full display name shown on the actor profile page and in cast lists
-    topCast: true,
-    // true = shown in the "Top Cast" grid on the home page
-    knownForRole: 'Alice Kingsleigh',
-    // The actor's most recognizable character — shown below their name
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Mia_Wasikowska_Sundance_2026_v2.jpg/960px-Mia_Wasikowska_Sundance_2026_v2.jpg',
-    // Wikipedia Commons photo URL for the actor's portrait
-    age: 36,
-    // Current age in years
-    spouse: 'Not publicly disclosed',
-    // Spouse/partner name or "Not publicly disclosed"
-    parents: ['John Reid', 'Marzena Wasikowska'],
-    // Array of parent names — joined as a comma-separated string in ActorPage
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Mia_Wasikowska'
-      // Object of social platform names → profile URLs; rendered as clickable badges
-    },
+    slug: 'mia-wasikowska', name: 'Mia Wasikowska', topCast: true, knownForRole: 'Alice Kingsleigh',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Mia_Wasikowska_Sundance_2026_v2.jpg/960px-Mia_Wasikowska_Sundance_2026_v2.jpg',
+    age: 36, spouse: 'Not publicly disclosed', parents: ['John Reid', 'Marzena Wasikowska'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Mia_Wasikowska' },
     biography: [
-      // Array of 3 paragraph strings — displayed as separate <p> elements in ActorPage
       'Mia Wasikowska broke through internationally with a style that blends restraint and intensity. Her performances often carry emotional complexity without relying on theatricality.',
       'She became globally recognized for Alice Kingsleigh, while also building a respected career in independent drama with directors who value subtle character work and psychological depth.',
       'Across period pieces, modern dramas, and literary adaptations, she is known for selecting projects that emphasize craft, atmosphere, and character nuance over celebrity-driven roles.'
     ],
     movieCredits: [
-      // Array of known movie roles — merged with movies.js data in ActorPage.jsx
       { title: 'Alice in Wonderland', year: 2010, rating: 6.4, role: 'Alice Kingsleigh' },
       { title: 'Alice Through the Looking Glass', year: 2016, rating: 6.2, role: 'Alice Kingsleigh' }
     ]
   },
   {
-    slug: 'johnny-depp',
-    name: 'Johnny Depp',
-    topCast: true,
-    knownForRole: 'Mad Hatter',
+    slug: 'johnny-depp', name: 'Johnny Depp', topCast: true, knownForRole: 'Mad Hatter',
     imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/21/Johnny_Depp_2020.jpg',
-    age: 62,
-    spouse: 'Previously married to Lori Anne Allison and Amber Heard',
+    age: 62, spouse: 'Previously married to Lori Anne Allison and Amber Heard',
     parents: ['John Christopher Depp', 'Betty Sue Palmer'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Johnny_Depp',
-      instagram: 'https://www.instagram.com/johnnydepp/'
-      // Two social links — wikipedia and instagram will both appear as badges
-    },
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Johnny_Depp', instagram: 'https://www.instagram.com/johnnydepp/' },
     biography: [
       'Johnny Depp is an American actor known for transformational performances, unconventional character choices, and collaborations with major auteur filmmakers.',
       'He developed a reputation for eccentric screen personas, moving between commercial franchises and darker dramatic work that highlights voice, movement, and visual identity.',
@@ -60,18 +31,10 @@ const actorRecords = [
     ]
   },
   {
-    slug: 'helena-bonham-carter',
-    name: 'Helena Bonham Carter',
-    topCast: true,
-    knownForRole: 'Red Queen',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/British-actress-Helena-Bonham-Carter-2019.jpg/960px-British-actress-Helena-Bonham-Carter-2019.jpg',
-    age: 59,
-    spouse: 'Not currently married',
-    parents: ['Raymond Bonham Carter', 'Elena Bonham Carter'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Helena_Bonham_Carter'
-    },
+    slug: 'helena-bonham-carter', name: 'Helena Bonham Carter', topCast: true, knownForRole: 'Red Queen',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/British-actress-Helena-Bonham-Carter-2019.jpg/960px-British-actress-Helena-Bonham-Carter-2019.jpg',
+    age: 59, spouse: 'Not currently married', parents: ['Raymond Bonham Carter', 'Elena Bonham Carter'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Helena_Bonham_Carter' },
     biography: [
       'Helena Bonham Carter has built an acclaimed career in British and international cinema with a signature blend of intensity, wit, and theatrical imagination.',
       'She is celebrated for her ability to inhabit eccentric and emotionally layered characters in period dramas, fantasy films, and biographical projects.',
@@ -83,18 +46,10 @@ const actorRecords = [
     ]
   },
   {
-    slug: 'anne-hathaway',
-    name: 'Anne Hathaway',
-    topCast: true,
-    knownForRole: 'White Queen',
+    slug: 'anne-hathaway', name: 'Anne Hathaway', topCast: true, knownForRole: 'White Queen',
     imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Anne_Hathaway_at_The_Apprentice_in_NYC_03_%28cropped2%29.jpg',
-    age: 43,
-    spouse: 'Adam Shulman',
-    parents: ['Gerald Hathaway', 'Kate McCauley Hathaway'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Anne_Hathaway',
-      instagram: 'https://www.instagram.com/annehathaway/'
-    },
+    age: 43, spouse: 'Adam Shulman', parents: ['Gerald Hathaway', 'Kate McCauley Hathaway'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Anne_Hathaway', instagram: 'https://www.instagram.com/annehathaway/' },
     biography: [
       'Anne Hathaway is an Academy Award-winning actor recognized for balancing mainstream appeal with technically demanding dramatic performances.',
       'Her body of work includes musical roles, romantic comedies, science fiction, and prestige drama, often marked by emotional clarity and strong character arcs.',
@@ -106,109 +61,58 @@ const actorRecords = [
     ]
   },
   {
-    slug: 'crispin-glover',
-    name: 'Crispin Glover',
-    topCast: true,
-    knownForRole: 'Stayne - Knave of Hearts',
+    slug: 'crispin-glover', name: 'Crispin Glover', topCast: true, knownForRole: 'Stayne - Knave of Hearts',
     imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/b3/Crispin_Glover_cropped_2010.jpg',
-    age: 61,
-    spouse: 'Not publicly disclosed',
-    parents: ['Bruce Glover', 'Betty Krachey'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Crispin_Glover'
-    },
+    age: 61, spouse: 'Not publicly disclosed', parents: ['Bruce Glover', 'Betty Krachey'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Crispin_Glover' },
     biography: [
       'Crispin Glover is known for stylized performances that lean into surreal tone, physical eccentricity, and unpredictable character choices.',
       'He developed a cult reputation by taking unconventional parts in genre films and independent productions that challenge mainstream expectations.',
       'Beyond acting, he has sustained a multidisciplinary creative profile, including directing and writing projects with distinctive visual language.'
     ],
-    movieCredits: [
-      { title: 'Alice in Wonderland', year: 2010, rating: 6.4, role: 'Stayne - Knave of Hearts' }
-    ]
+    movieCredits: [{ title: 'Alice in Wonderland', year: 2010, rating: 6.4, role: 'Stayne - Knave of Hearts' }]
   },
   {
-    slug: 'matt-lucas',
-    name: 'Matt Lucas',
-    topCast: true,
-    knownForRole: 'Tweedledee',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Matt_Lucas_by_Gage_Skidmore.jpg/960px-Matt_Lucas_by_Gage_Skidmore.jpg',
-    age: 52,
-    spouse: 'Kevin McGee (former spouse)',
-    parents: ['Diana Lucas', 'John Stanley Lucas'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Matt_Lucas',
-      x: 'https://x.com/RealMattLucas'
-      // 'x' is the key for Twitter/X — rendered as a badge labeled "x" in ActorPage
-    },
+    slug: 'matt-lucas', name: 'Matt Lucas', topCast: true, knownForRole: 'Tweedledee',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Matt_Lucas_by_Gage_Skidmore.jpg/960px-Matt_Lucas_by_Gage_Skidmore.jpg',
+    age: 52, spouse: 'Kevin McGee (former spouse)', parents: ['Diana Lucas', 'John Stanley Lucas'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Matt_Lucas', x: 'https://x.com/RealMattLucas' },
     biography: [
       'Matt Lucas is an English actor and comedian known for character-based comedy and elastic vocal performance.',
       'He expanded from sketch comedy into film and television roles, frequently playing memorable supporting parts in fantasy and family features.',
       'His work blends comic timing with theatrical expression, making him a recognizable presence across British and international productions.'
     ],
-    movieCredits: [
-      { title: 'Alice in Wonderland', year: 2010, rating: 6.4, role: 'Tweedledee and Tweedledum' }
-    ]
+    movieCredits: [{ title: 'Alice in Wonderland', year: 2010, rating: 6.4, role: 'Tweedledee and Tweedledum' }]
   },
   {
-    slug: 'michael-sheen',
-    name: 'Michael Sheen',
-    topCast: true,
-    knownForRole: 'White Rabbit (voice)',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Michael_Sheen_crop_n2_Good_Omens_panel_at_NYCC_%2861104%29.jpg/1280px-Michael_Sheen_crop_n2_Good_Omens_panel_at_NYCC_%2861104%29.jpg',
-    age: 57,
-    spouse: 'Anna Lundberg',
-    parents: ['Meyrick Sheen', 'Irene Sheen'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Michael_Sheen'
-    },
+    slug: 'michael-sheen', name: 'Michael Sheen', topCast: true, knownForRole: 'White Rabbit (voice)',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Michael_Sheen_crop_n2_Good_Omens_panel_at_NYCC_%2861104%29.jpg/1280px-Michael_Sheen_crop_n2_Good_Omens_panel_at_NYCC_%2861104%29.jpg',
+    age: 57, spouse: 'Anna Lundberg', parents: ['Meyrick Sheen', 'Irene Sheen'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Michael_Sheen' },
     biography: [
       'Michael Sheen is a Welsh actor acclaimed for stage and screen performances that emphasize voice control, character rhythm, and psychological precision.',
       'He is especially respected for portraying real-world figures as well as fantastical characters, often shifting seamlessly between prestige drama and genre storytelling.',
       'Across film, television, and theater, he has sustained a reputation for detailed preparation and highly adaptive performance styles.'
     ],
-    movieCredits: [
-      { title: 'Alice in Wonderland', year: 2010, rating: 6.4, role: 'White Rabbit (voice)' }
-    ]
+    movieCredits: [{ title: 'Alice in Wonderland', year: 2010, rating: 6.4, role: 'White Rabbit (voice)' }]
   },
   {
-    slug: 'stephen-fry',
-    name: 'Stephen Fry',
-    topCast: true,
-    knownForRole: 'Cheshire Cat (voice)',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Stephen_Fry_at_Berlinale_2024_Ausschnitt.jpg/960px-Stephen_Fry_at_Berlinale_2024_Ausschnitt.jpg',
-    age: 68,
-    spouse: 'Elliott Spencer',
-    parents: ['Alan John Fry', 'Marianne Eve Newman'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Stephen_Fry',
-      x: 'https://x.com/stephenfry'
-    },
+    slug: 'stephen-fry', name: 'Stephen Fry', topCast: true, knownForRole: 'Cheshire Cat (voice)',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Stephen_Fry_at_Berlinale_2024_Ausschnitt.jpg/960px-Stephen_Fry_at_Berlinale_2024_Ausschnitt.jpg',
+    age: 68, spouse: 'Elliott Spencer', parents: ['Alan John Fry', 'Marianne Eve Newman'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Stephen_Fry', x: 'https://x.com/stephenfry' },
     biography: [
       'Stephen Fry is an English actor, writer, and broadcaster widely recognized for literary wit, narration work, and refined comedic performance.',
       'His career spans television satire, dramatic acting, documentary hosting, and extensive voice work across film and audio projects.',
       'He is known for combining intellectual range with accessible storytelling, making him one of the most recognizable cultural figures in British media.'
     ],
-    movieCredits: [
-      { title: 'Alice in Wonderland', year: 2010, rating: 6.4, role: 'Cheshire Cat (voice)' }
-    ]
+    movieCredits: [{ title: 'Alice in Wonderland', year: 2010, rating: 6.4, role: 'Cheshire Cat (voice)' }]
   },
   {
-    slug: 'alan-rickman',
-    name: 'Alan Rickman',
-    topCast: true,
-    knownForRole: 'Blue Caterpillar (voice)',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Alan_Rickman_after_Seminar_%283%29.jpg/960px-Alan_Rickman_after_Seminar_%283%29.jpg',
-    age: 69,
-    // Alan Rickman passed away in 2016; age reflects his age at death
-    spouse: 'Rima Horton',
-    parents: ['Bernard Rickman', 'Margaret Doreen Rose'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Alan_Rickman'
-    },
+    slug: 'alan-rickman', name: 'Alan Rickman', topCast: true, knownForRole: 'Blue Caterpillar (voice)',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Alan_Rickman_after_Seminar_%283%29.jpg/960px-Alan_Rickman_after_Seminar_%283%29.jpg',
+    age: 69, spouse: 'Rima Horton', parents: ['Bernard Rickman', 'Margaret Doreen Rose'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Alan_Rickman' },
     biography: [
       'Alan Rickman was an English actor known for one of the most distinctive voices in modern cinema and theater.',
       'He brought precision, irony, and emotional control to antagonists and tragic characters, making many roles culturally iconic.',
@@ -220,41 +124,22 @@ const actorRecords = [
     ]
   },
   {
-    slug: 'barbara-windsor',
-    name: 'Barbara Windsor',
-    topCast: true,
-    knownForRole: 'Dormouse (voice)',
+    slug: 'barbara-windsor', name: 'Barbara Windsor', topCast: true, knownForRole: 'Dormouse (voice)',
     imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/8/80/Barbara_Windsor_Maryebone_Tree.JPG',
-    age: 83,
-    // Barbara Windsor passed away in 2020; age reflects her age at death
-    spouse: 'Scott Mitchell',
-    parents: ['John Deeks', 'Rose Deeks'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Barbara_Windsor'
-    },
+    age: 83, spouse: 'Scott Mitchell', parents: ['John Deeks', 'Rose Deeks'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Barbara_Windsor' },
     biography: [
       'Barbara Windsor was an English actor and television personality with a long career across film, stage, and serial drama.',
       'She became a household name through both comedy and soap-opera work, recognized for expressive energy and instantly identifiable delivery.',
       'Her influence in British popular culture endured for decades, and her performances remain closely tied to major eras of UK entertainment.'
     ],
-    movieCredits: [
-      { title: 'Alice in Wonderland', year: 2010, rating: 6.4, role: 'Dormouse (voice)' }
-    ]
+    movieCredits: [{ title: 'Alice in Wonderland', year: 2010, rating: 6.4, role: 'Dormouse (voice)' }]
   },
   {
-    slug: 'paul-whitehouse',
-    name: 'Paul Whitehouse',
-    topCast: true,
-    knownForRole: 'March Hare',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Paul_Whitehouse_20231207.jpg/1280px-Paul_Whitehouse_20231207.jpg',
-    age: 67,
-    spouse: 'Mina Whitehouse',
-    parents: ['Welsh and English family background'],
-    // Single-element parents array — displayed as-is
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Paul_Whitehouse'
-    },
+    slug: 'paul-whitehouse', name: 'Paul Whitehouse', topCast: true, knownForRole: 'March Hare',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Paul_Whitehouse_20231207.jpg/1280px-Paul_Whitehouse_20231207.jpg',
+    age: 67, spouse: 'Mina Whitehouse', parents: ['Welsh and English family background'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Paul_Whitehouse' },
     biography: [
       'Paul Whitehouse is a Welsh actor and comedian recognized for his sharp sketch-comedy work and expressive character acting.',
       'He has contributed to influential British television comedies while also appearing in fantasy and family films.',
@@ -263,18 +148,10 @@ const actorRecords = [
     movieCredits: [{ title: 'Alice in Wonderland', year: 2010, rating: 6.4, role: 'March Hare' }]
   },
   {
-    slug: 'timothy-spall',
-    name: 'Timothy Spall',
-    topCast: true,
-    knownForRole: 'Bayard Hamar',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Timothy_Spall_World_Premiere_The_Party_Berlinale_2017_02.jpg/960px-Timothy_Spall_World_Premiere_The_Party_Berlinale_2017_02.jpg',
-    age: 69,
-    spouse: 'Shane Spall',
-    parents: ['Sylvia May Spall', 'Joseph L. Spall'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Timothy_Spall'
-    },
+    slug: 'timothy-spall', name: 'Timothy Spall', topCast: true, knownForRole: 'Bayard Hamar',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Timothy_Spall_World_Premiere_The_Party_Berlinale_2017_02.jpg/960px-Timothy_Spall_World_Premiere_The_Party_Berlinale_2017_02.jpg',
+    age: 69, spouse: 'Shane Spall', parents: ['Sylvia May Spall', 'Joseph L. Spall'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Timothy_Spall' },
     biography: [
       'Timothy Spall is an English actor respected for deeply human performances across historical drama, fantasy, and contemporary stories.',
       'He is frequently cast in roles that require emotional vulnerability, unusual physicality, or strong character transformation.',
@@ -286,19 +163,10 @@ const actorRecords = [
     ]
   },
   {
-    slug: 'leonardo-dicaprio',
-    name: 'Leonardo DiCaprio',
-    topCast: false,
-    // topCast: false = does NOT appear in the home page "Top Cast" grid
-    knownForRole: 'Cobb in Inception',
+    slug: 'leonardo-dicaprio', name: 'Leonardo DiCaprio', topCast: false, knownForRole: 'Cobb in Inception',
     imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/2d/LeoPTABFI191125-28_%28cropped%29.jpg',
-    age: 51,
-    spouse: 'Not publicly disclosed',
-    parents: ['George DiCaprio', 'Irmelin DiCaprio'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Leonardo_DiCaprio',
-      instagram: 'https://www.instagram.com/leonardodicaprio/'
-    },
+    age: 51, spouse: 'Not publicly disclosed', parents: ['George DiCaprio', 'Irmelin DiCaprio'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Leonardo_DiCaprio', instagram: 'https://www.instagram.com/leonardodicaprio/' },
     biography: [
       'Leonardo DiCaprio is an Academy Award-winning actor known for psychologically intense leading performances.',
       'He has collaborated repeatedly with high-profile directors, moving between historical epics, crime dramas, and existential thrillers.',
@@ -311,18 +179,10 @@ const actorRecords = [
     ]
   },
   {
-    slug: 'tom-hanks',
-    name: 'Tom Hanks',
-    topCast: false,
-    knownForRole: 'Forrest Gump',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/TomHanksPrincEdw031223_%2811_of_41%29_%28cropped%29.jpg/960px-TomHanksPrincEdw031223_%2811_of_41%29_%28cropped%29.jpg',
-    age: 70,
-    spouse: 'Rita Wilson',
-    parents: ['Amos Mefford Hanks', 'Janet Marylyn Frager'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Tom_Hanks'
-    },
+    slug: 'tom-hanks', name: 'Tom Hanks', topCast: false, knownForRole: 'Forrest Gump',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/TomHanksPrincEdw031223_%2811_of_41%29_%28cropped%29.jpg/960px-TomHanksPrincEdw031223_%2811_of_41%29_%28cropped%29.jpg',
+    age: 70, spouse: 'Rita Wilson', parents: ['Amos Mefford Hanks', 'Janet Marylyn Frager'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Tom_Hanks' },
     biography: [
       'Tom Hanks is one of the most influential American actors of his generation, known for dramatic warmth and screen reliability.',
       'His filmography spans comedy, historical drama, war cinema, and animation, with multiple globally recognized roles.',
@@ -335,18 +195,10 @@ const actorRecords = [
     ]
   },
   {
-    slug: 'morgan-freeman',
-    name: 'Morgan Freeman',
-    topCast: true,
-    knownForRole: 'Ellis Boyd Redding',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Morgan_Freeman_Deauville_2018.jpg/960px-Morgan_Freeman_Deauville_2018.jpg',
-    age: 89,
-    spouse: 'Previously married',
-    parents: ['Mamay Edna', 'Morgan Porterfield Freeman'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Morgan_Freeman'
-    },
+    slug: 'morgan-freeman', name: 'Morgan Freeman', topCast: true, knownForRole: 'Ellis Boyd Redding',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Morgan_Freeman_Deauville_2018.jpg/960px-Morgan_Freeman_Deauville_2018.jpg',
+    age: 89, spouse: 'Previously married', parents: ['Mamay Edna', 'Morgan Porterfield Freeman'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Morgan_Freeman' },
     biography: [
       'Morgan Freeman is an American actor known for authoritative screen presence, resonant narration, and emotionally grounded performances.',
       'His career spans prison drama, crime thrillers, historical films, and large-scale studio franchises, often anchored by moral complexity.',
@@ -359,18 +211,10 @@ const actorRecords = [
     ]
   },
   {
-    slug: 'keanu-reeves',
-    name: 'Keanu Reeves',
-    topCast: true,
-    knownForRole: 'Neo',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Keanu_Reeves_%282023%29.jpg/960px-Keanu_Reeves_%282023%29.jpg',
-    age: 62,
-    spouse: 'Not publicly disclosed',
-    parents: ['Patricia Taylor', 'Samuel Nowlin Reeves Jr.'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Keanu_Reeves'
-    },
+    slug: 'keanu-reeves', name: 'Keanu Reeves', topCast: true, knownForRole: 'Neo',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Keanu_Reeves_%282023%29.jpg/960px-Keanu_Reeves_%282023%29.jpg',
+    age: 62, spouse: 'Not publicly disclosed', parents: ['Patricia Taylor', 'Samuel Nowlin Reeves Jr.'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Keanu_Reeves' },
     biography: [
       'Keanu Reeves is a Canadian actor widely known for action and science-fiction roles with understated style and physical commitment.',
       'He became a global icon through cyberpunk storytelling and franchise action cinema while maintaining a steady dramatic career.',
@@ -383,18 +227,10 @@ const actorRecords = [
     ]
   },
   {
-    slug: 'robert-de-niro',
-    name: 'Robert De Niro',
-    topCast: false,
-    knownForRole: 'Vito Corleone',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Robert_De_Niro_Cannes_2016.jpg/960px-Robert_De_Niro_Cannes_2016.jpg',
-    age: 83,
-    spouse: 'Previously married',
-    parents: ['Robert De Niro Sr.', 'Virginia Admiral'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Robert_De_Niro'
-    },
+    slug: 'robert-de-niro', name: 'Robert De Niro', topCast: false, knownForRole: 'Vito Corleone',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Robert_De_Niro_Cannes_2016.jpg/960px-Robert_De_Niro_Cannes_2016.jpg',
+    age: 83, spouse: 'Previously married', parents: ['Robert De Niro Sr.', 'Virginia Admiral'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Robert_De_Niro' },
     biography: [
       'Robert De Niro is an American actor whose performances in crime and character drama helped define modern screen acting in the late twentieth century.',
       'He is known for deep character immersion, physical transformation, and long-running collaborations with major directors.',
@@ -407,18 +243,10 @@ const actorRecords = [
     ]
   },
   {
-    slug: 'cillian-murphy',
-    name: 'Cillian Murphy',
-    topCast: true,
-    knownForRole: 'J. Robert Oppenheimer',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Cillian_Murphy-2014.jpg/960px-Cillian_Murphy-2014.jpg',
-    age: 50,
-    spouse: 'Yvonne McGuinness',
-    parents: ['Brendan Murphy', 'Teacher mother'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Cillian_Murphy'
-    },
+    slug: 'cillian-murphy', name: 'Cillian Murphy', topCast: true, knownForRole: 'J. Robert Oppenheimer',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Cillian_Murphy-2014.jpg/960px-Cillian_Murphy-2014.jpg',
+    age: 50, spouse: 'Yvonne McGuinness', parents: ['Brendan Murphy', 'Teacher mother'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Cillian_Murphy' },
     biography: [
       'Cillian Murphy is an Irish actor recognized for intense, psychologically focused performances in both independent cinema and major studio films.',
       'He has collaborated repeatedly with Christopher Nolan and is known for combining precision with quiet emotional volatility.',
@@ -431,18 +259,10 @@ const actorRecords = [
     ]
   },
   {
-    slug: 'christian-bale',
-    name: 'Christian Bale',
-    topCast: true,
-    knownForRole: 'Bruce Wayne / Batman',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Christian_Bale-7839.jpg/960px-Christian_Bale-7839.jpg',
-    age: 52,
-    spouse: 'Sibi Blazic',
-    parents: ['David Bale', 'Jenny James'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Christian_Bale'
-    },
+    slug: 'christian-bale', name: 'Christian Bale', topCast: true, knownForRole: 'Bruce Wayne / Batman',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Christian_Bale-7839.jpg/960px-Christian_Bale-7839.jpg',
+    age: 52, spouse: 'Sibi Blazic', parents: ['David Bale', 'Jenny James'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Christian_Bale' },
     biography: [
       'Christian Bale is an English actor known for physical transformation and immersive performance choices across genres.',
       'He has led high-profile franchises and delivered acclaimed dramatic roles in historical and psychological storytelling.',
@@ -455,18 +275,10 @@ const actorRecords = [
     ]
   },
   {
-    slug: 'robert-downey-jr',
-    name: 'Robert Downey Jr.',
-    topCast: false,
-    knownForRole: 'Tony Stark / Iron Man',
-    imageUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Robert_Downey_Jr_SDCC_2014.jpg/960px-Robert_Downey_Jr_SDCC_2014.jpg',
-    age: 61,
-    spouse: 'Susan Downey',
-    parents: ['Robert Downey Sr.', 'Elsie Ford'],
-    social: {
-      wikipedia: 'https://en.wikipedia.org/wiki/Robert_Downey_Jr.'
-    },
+    slug: 'robert-downey-jr', name: 'Robert Downey Jr.', topCast: false, knownForRole: 'Tony Stark / Iron Man',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Robert_Downey_Jr_SDCC_2014.jpg/960px-Robert_Downey_Jr_SDCC_2014.jpg',
+    age: 61, spouse: 'Susan Downey', parents: ['Robert Downey Sr.', 'Elsie Ford'],
+    social: { wikipedia: 'https://en.wikipedia.org/wiki/Robert_Downey_Jr.' },
     biography: [
       'Robert Downey Jr. is an American actor known for sharp comedic timing, charisma-driven leads, and dramatic reinvention.',
       'He became central to modern blockbuster cinema through interconnected superhero storytelling while maintaining awards-level dramatic work.',
@@ -481,16 +293,6 @@ const actorRecords = [
 ]
 
 export const actors = actorRecords
-// Named export of the full actor array — can be imported as: import { actors } from '../data/actors'
-
 export const topCast = actorRecords.filter((actor) => actor.topCast)
-// Filtered array of only actors with topCast=true — used in Home.jsx's "Top Cast" section
-// 12 actors have topCast: true; 11 have topCast: false
-
 export const actorsBySlug = Object.fromEntries(actorRecords.map((actor) => [actor.slug, actor]))
-// Lookup object: { "tom-hanks": actorObject, "morgan-freeman": actorObject, ... }
-// Used in ActorPage.jsx to find the actor from the URL slug in O(1) time
-
 export const actorSlugByName = Object.fromEntries(actorRecords.map((actor) => [actor.name, actor.slug]))
-// Reverse lookup object: { "Tom Hanks": "tom-hanks", "Morgan Freeman": "morgan-freeman", ... }
-// Used in MovieModal.jsx to convert cast member names to clickable profile links
