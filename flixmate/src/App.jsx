@@ -1,49 +1,51 @@
-import { useEffect, useState } from 'react'
-import AdminDashboard from './components/AdminDashboard'
-import ActorPage from './components/ActorPage'
-import Home from './components/Home'
-import MovieModal from './components/MovieModal'
+import { useStore } from './app/storeContext'
 import Navbar from './components/Navbar'
+import MovieModal from './components/MovieModal'
+import TrailerModal from './components/TrailerModal'
+import ShareModal from './components/ShareModal'
+import ChatWidget from './components/ChatWidget'
+import { Toast } from './components/primitives'
 
-function App() {
-  const [selectedMovie, setSelectedMovie] = useState(null)
-  const [path, setPath] = useState(window.location.hash || '#/')
+import Home from './screens/Home'
+import Search from './screens/Search'
+import Theatres from './screens/Theatres'
+import ForYou from './screens/ForYou'
+import Friends from './screens/Friends'
+import Watchlist from './screens/Watchlist'
+import Profile from './screens/Profile'
+import Settings from './screens/Settings'
+import Actor from './screens/Actor'
+import Auth from './screens/Auth'
+import Chat from './screens/Chat'
 
-  useEffect(() => {
-    const onHashChange = () => setPath(window.location.hash || '#/')
-    window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
+const SCREENS = {
+  home: Home,
+  search: Search,
+  theatres: Theatres,
+  foryou: ForYou,
+  friends: Friends,
+  watchlist: Watchlist,
+  profile: Profile,
+  settings: Settings,
+  actor: Actor,
+  auth: Auth,
+  chat: Chat
+}
 
-  const rawRoute = (path || '#/').replace(/^#/, '')
-  const route = rawRoute.startsWith('/') ? rawRoute : `/${rawRoute}`
-  const actorSlug = route.startsWith('/actor/') ? decodeURIComponent(route.replace('/actor/', '')) : null
-  const isAdminRoute = route === '/admin'
-  const isActorRoute = Boolean(actorSlug)
-
-  const openAdmin = () => { window.location.hash = '/admin' }
-  const openHome = () => { window.location.hash = '/' }
+export default function App() {
+  const { state } = useStore()
+  const Screen = SCREENS[state.screen] || Home
 
   return (
-    <div className="min-h-screen bg-bg text-text">
-      <Navbar onOpenAdmin={openAdmin} onOpenHome={openHome} />
+    <div style={{ minHeight: '100vh', background: 'var(--fm-bg)', color: 'var(--fm-text)' }}>
+      <Navbar />
+      <Screen />
 
-      {isAdminRoute ? (
-        <AdminDashboard />
-      ) : isActorRoute ? (
-        <ActorPage actorSlug={actorSlug} />
-      ) : (
-        <Home onOpenMovie={(movie) => setSelectedMovie(movie)} />
-      )}
-
-      <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />
-
-      <footer className="border-t border-white/10 px-4 py-4 text-center text-sm text-muted">
-        <button onClick={openHome} className="mr-4 hover:text-white">Home</button>
-        <button onClick={openAdmin} className="hover:text-primary">Admin Login</button>
-      </footer>
+      <MovieModal />
+      <ShareModal />
+      <TrailerModal />
+      <ChatWidget />
+      <Toast message={state.toast} />
     </div>
   )
 }
-
-export default App
