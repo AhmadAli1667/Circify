@@ -1,19 +1,18 @@
 import { useStore } from '../app/storeContext'
-import { getMovie } from '../app/catalog'
+import { useMovieDetails } from '../app/useMovieDetails'
 import { backdrop } from '../app/art'
-import { SoonTag } from './primitives'
 import { useHover } from '../app/ui'
 
 /**
- * Trailer player.
- *
- * The catalogue stores a YouTube *search* link per title, not an embeddable
- * video id, so nothing can play inline yet. Rather than embedding an unrelated
- * placeholder clip, this says so and hands off to YouTube.
+ * Trailer player. Embeds the real YouTube trailer once the detail fetch
+ * resolves a `trailerKey`. Some titles genuinely have no trailer on TMDb;
+ * that case (and the brief load) falls back to a YouTube search link rather
+ * than a placeholder clip.
  */
 export default function TrailerModal() {
-  const { state, patch } = useStore()
+  const { state, patch, getMovie } = useStore()
   const movie = state.trailerId ? getMovie(state.trailerId) : null
+  const detail = useMovieDetails(movie?.id, state.genreMap)
   if (!movie) return null
 
   const close = () => patch({ trailerId: null })
@@ -88,58 +87,60 @@ export default function TrailerModal() {
           boxShadow: '0 30px 90px rgba(0,0,0,.7)',
           background: backdrop(movie.hue),
           position: 'relative',
-          display: 'grid',
+          display: detail?.trailerKey ? 'block' : 'grid',
           placeItems: 'center',
           textAlign: 'center',
-          padding: 32
+          padding: detail?.trailerKey ? 0 : 32
         }}
       >
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.55)' }} />
-        <div style={{ position: 'relative' }}>
-          <div style={{ fontSize: 52, marginBottom: 14, color: '#fff' }}>▶</div>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 10,
-              color: '#fff',
-              fontWeight: 900,
-              fontSize: 22,
-              marginBottom: 10
-            }}
-          >
-            In-app trailer playback <SoonTag />
-          </div>
-          <p
-            style={{
-              margin: '0 auto 22px',
-              maxWidth: 420,
-              color: 'rgba(255,255,255,.75)',
-              fontWeight: 600,
-              fontSize: 14,
-              lineHeight: 1.55
-            }}
-          >
-            The catalogue doesn&apos;t carry trailer video ids yet. Until it does, this opens the trailer search on
-            YouTube instead of playing a placeholder clip.
-          </p>
-          <a
-            href={movie.trailerLink}
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              display: 'inline-block',
-              padding: '13px 26px',
-              borderRadius: 13,
-              background: '#fff',
-              color: '#141014',
-              fontWeight: 900,
-              fontSize: 15
-            }}
-          >
-            Watch on YouTube ↗
-          </a>
-        </div>
+        {detail?.trailerKey ? (
+          <iframe
+            title={`${movie.title} trailer`}
+            src={`https://www.youtube.com/embed/${detail.trailerKey}?autoplay=1`}
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+          />
+        ) : (
+          <>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.55)' }} />
+            <div style={{ position: 'relative' }}>
+              <div style={{ fontSize: 52, marginBottom: 14, color: '#fff' }}>▶</div>
+              {!detail ? (
+                <div style={{ color: '#fff', fontWeight: 900, fontSize: 18, marginBottom: 18 }}>Loading trailer…</div>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      color: '#fff',
+                      fontWeight: 900,
+                      fontSize: 20,
+                      marginBottom: 20
+                    }}
+                  >
+                    Watch the trailer on YouTube
+                  </div>
+                  <a
+                    href={movie.trailerLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      display: 'inline-block',
+                      padding: '13px 26px',
+                      borderRadius: 13,
+                      background: '#fff',
+                      color: '#141014',
+                      fontWeight: 900,
+                      fontSize: 15
+                    }}
+                  >
+                    Open YouTube ↗
+                  </a>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <div style={{ marginTop: 14, color: 'rgba(255,255,255,.5)', fontSize: 12.5, fontWeight: 600 }}>

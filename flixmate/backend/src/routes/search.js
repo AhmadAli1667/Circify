@@ -14,4 +14,15 @@ router.get('/', async (req, res) => {
   }
 })
 
+router.get('/company', async (req, res) => {
+  const query = req.query.query
+  if (!query) return res.status(400).json({ error: 'query param required' })
+  try {
+    const data = await tmdbFetch('/search/company', { query })
+    res.json(data)
+  } catch (err) {
+    res.status(502).json({ error: err.message })
+  }
+})
+
 export default router

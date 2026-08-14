@@ -6,8 +6,8 @@ import { useHover } from '../app/ui'
 /**
  * Sign in / sign up.
  *
- * There is no auth backend, so nothing here creates or verifies an account —
- * submitting drops you into the app as the demo profile and the notice below
+ * There is no auth backend, so nothing here creates or verifies an account.
+ * Submitting drops you into the app as the demo profile, and the notice below
  * the form says so. Password strength is measured locally.
  */
 export default function Auth() {
@@ -153,7 +153,7 @@ export default function Auth() {
             textAlign: 'center'
           }}
         >
-          Real accounts &amp; sync <SoonTag /> — this continues as the demo profile
+          Real accounts &amp; sync <SoonTag /> (this continues as the demo profile)
         </div>
 
         <div style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--fm-muted)', fontWeight: 700 }}>

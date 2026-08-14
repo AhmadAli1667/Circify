@@ -1,13 +1,34 @@
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStore } from '../app/storeContext'
-import { movies as MOVIES } from '../app/catalog'
+import { useMovieDetails } from '../app/useMovieDetails'
+import { usePaginatedList } from '../app/usePaginatedList'
+import { adaptMovie } from '../app/catalog'
+import * as api from '../app/tmdbApi'
 import { backdrop } from '../app/art'
 import PosterCard from '../components/PosterCard'
+import PosterImage from '../components/PosterImage'
+import RowScroller from '../components/RowScroller'
 import WizardRail from '../components/WizardRail'
 import Footer from '../components/Footer'
 import ActiveChips, { NoResults } from '../components/ActiveChips'
 import { useActiveChips } from '../app/useActiveChips'
 import { RESULT_GRID, useHover } from '../app/ui'
+
+/**
+ * Genre rows on Home, each backed by a real TMDb discover query so "See all"
+ * can keep paging in more titles instead of hard-capping at a fixed list.
+ * `withGenres` uses TMDb's with_genres syntax: comma = AND, so 'Comedy,Romance'
+ * means "tagged both", a reasonable definition of rom-com.
+ */
+const GENRE_ROWS = [
+  { key: 'action', title: 'Action', withGenres: '28' },
+  { key: 'comedy', title: 'Comedy', withGenres: '35' },
+  { key: 'horror', title: 'Horror', withGenres: '27' },
+  { key: 'kids', title: 'Kids & Family', withGenres: '10751' },
+  { key: 'romcom', title: 'Rom-Coms', withGenres: '35,10749' },
+  { key: 'scifi', title: 'Sci-Fi', withGenres: '878' },
+  { key: 'documentary', title: 'Documentaries', withGenres: '99' }
+]
 
 /**
  * Home. Shows the hero carousel plus the curated rows until any filter is
@@ -123,8 +144,11 @@ function HomeFeatured() {
 function Hero() {
   const { state, patch, openMovie, playTrailer } = useStore()
 
-  const heroList = useMemo(() => [...MOVIES].sort((a, b) => b.rating - a.rating).slice(0, 5), [])
+  const heroList = useMemo(() => [...state.movies].sort((a, b) => b.rating - a.rating).slice(0, 5), [state.movies])
   const hm = heroList[state.heroIndex % heroList.length]
+  const detail = useMovieDetails(hm?.id, state.genreMap)
+
+  if (!hm) return null
 
   return (
     <div
@@ -145,7 +169,9 @@ function Hero() {
           background: backdrop(hm.hue),
           animation: 'fmKen 9s ease-out both'
         }}
-      />
+      >
+        <PosterImage src={hm.backdropUrl} objectPosition="center 22%" />
+      </div>
       <div
         style={{
           position: 'absolute',
@@ -185,7 +211,8 @@ function Hero() {
             Featured
           </span>
           <span style={{ fontSize: 12.5, color: 'rgba(255,255,255,.72)', fontWeight: 700 }}>
-            {hm.genre} · {hm.year} · {hm.runtime}
+            {hm.genre} · {hm.year}
+            {detail?.runtime ? ` · ${detail.runtime}` : ''}
           </span>
         </div>
 
@@ -312,83 +339,128 @@ function HeroInfo({ onClick }) {
 }
 
 /**
- * The three curated rows. "Recommended" leans on whatever the user has rated
- * highly, falling back to the mockup's Sci-Fi/Thriller mix on a fresh profile.
+ * Trending + a personalized row from the loaded pool, then a genre row per
+ * entry in GENRE_ROWS, each fetched live from TMDb so paging never runs dry.
  */
 function Rows() {
-  const { state, patch } = useStore()
+  const { state } = useStore()
 
-  const rowDefs = useMemo(() => {
-    const byRating = [...MOVIES].sort((a, b) => b.rating - a.rating)
-    const byYear = [...MOVIES].sort((a, b) => b.year - a.year)
+  const { trending, recommended } = useMemo(() => {
+    const byPopularity = [...state.movies].sort((a, b) => b.popularity - a.popularity)
+    const byRating = [...state.movies].sort((a, b) => b.rating - a.rating)
 
     const loved = Object.entries(state.ratings)
       .filter(([, v]) => v >= 4)
-      .map(([id]) => MOVIES.find((m) => m.id === Number(id)))
+      .map(([id]) => state.movies.find((m) => m.id === Number(id)))
       .filter(Boolean)
-    const tasteGenres = loved.length
-      ? [...new Set(loved.flatMap((m) => m.genres))]
-      : ['Sci-Fi', 'Thriller']
+    const tasteGenres = loved.length ? [...new Set(loved.flatMap((m) => m.genres))] : ['Sci-Fi', 'Thriller']
 
-    return [
-      { key: 'trending', title: 'Trending Now', all: byYear.slice(0, 18) },
-      {
-        key: 'rec',
-        title: 'Recommended for You',
-        all: byRating.filter((m) => m.genres.some((g) => tasteGenres.includes(g))).slice(0, 18)
-      },
-      { key: 'acclaimed', title: 'Critically Acclaimed', all: byRating.slice(0, 18) }
-    ]
-  }, [state.ratings])
+    return {
+      trending: byPopularity.slice(0, 24),
+      recommended: byRating.filter((m) => m.genres.some((g) => tasteGenres.includes(g))).slice(0, 24)
+    }
+  }, [state.movies, state.ratings])
 
-  return rowDefs.map((rd) => {
-    const expanded = Boolean(state.rowExpanded[rd.key])
-    const list = expanded ? rd.all : rd.all.slice(0, 9)
+  return (
+    <>
+      <StaticRow title="Trending Now" items={trending} />
+      <StaticRow title="Recommended for You" items={recommended} />
+      {GENRE_ROWS.map((g) => (
+        <GenreRow key={g.key} title={g.title} withGenres={g.withGenres} />
+      ))}
+    </>
+  )
+}
 
-    return (
-      <section key={rd.key} style={{ marginTop: 44 }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'baseline',
-            justifyContent: 'space-between',
-            marginBottom: 14
-          }}
-        >
-          <h2 className="fm-disp" style={{ margin: 0, fontSize: 29, letterSpacing: '-.2px' }}>
-            {rd.title}
-          </h2>
-          <SeeAll
-            expanded={expanded}
-            onClick={() =>
-              patch((s) => ({ rowExpanded: { ...s.rowExpanded, [rd.key]: !s.rowExpanded[rd.key] } }))
-            }
-          />
-        </div>
+/** A row over an already-loaded, fixed list (the pool, sliced client-side). */
+function StaticRow({ title, items }) {
+  const [expanded, setExpanded] = useState(false)
+  if (!items.length) return null
+  const list = expanded ? items : items.slice(0, 9)
 
-        <div
-          className="fm-scroll"
-          style={
-            expanded
-              ? { ...RESULT_GRID, gap: 18, padding: '4px 2px 16px' }
-              : {
-                  display: 'flex',
-                  gap: 16,
-                  overflowX: 'auto',
-                  padding: '4px 2px 16px',
-                  scrollSnapType: 'x proximity'
-                }
-          }
-        >
+  return (
+    <section style={{ marginTop: 44 }}>
+      <RowHeader title={title} expanded={expanded} onToggle={() => setExpanded((e) => !e)} showToggle={items.length > 9} />
+      {expanded ? (
+        <div style={{ ...RESULT_GRID, gap: 18, padding: '4px 2px 16px' }}>
           {list.map((m) => (
-            <div key={m.id} style={expanded ? undefined : { flex: 'none', width: 174, scrollSnapAlign: 'start' }}>
+            <PosterCard key={m.id} movie={m} />
+          ))}
+        </div>
+      ) : (
+        <RowScroller>
+          {list.map((m) => (
+            <div key={m.id} style={{ flex: 'none', width: 174, scrollSnapAlign: 'start' }}>
               <PosterCard movie={m} />
             </div>
           ))}
-        </div>
-      </section>
-    )
-  })
+        </RowScroller>
+      )}
+    </section>
+  )
+}
+
+/**
+ * A row backed by TMDb's real /discover/movie for one genre. "See all" opens
+ * a grid with its own "Load more" that keeps paging in fresh titles rather
+ * than stopping at whatever loaded first.
+ */
+function GenreRow({ title, withGenres }) {
+  const { state, cacheMovies } = useStore()
+  const [expanded, setExpanded] = useState(false)
+
+  const fetchPage = useCallback(
+    (page) => api.discoverMovies({ with_genres: withGenres, sort_by: 'popularity.desc', page }),
+    [withGenres]
+  )
+  const adapt = useCallback((m) => adaptMovie(m, state.genreMap), [state.genreMap])
+  const { items, loadMore, hasMore, loading } = usePaginatedList(fetchPage, adapt)
+
+  useEffect(() => {
+    if (items.length) cacheMovies(items)
+  }, [items, cacheMovies])
+
+  if (!items.length) return null
+  const list = expanded ? items : items.slice(0, 20)
+
+  return (
+    <section style={{ marginTop: 44 }}>
+      <RowHeader title={title} expanded={expanded} onToggle={() => setExpanded((e) => !e)} showToggle />
+      {expanded ? (
+        <>
+          <div style={{ ...RESULT_GRID, gap: 18, padding: '4px 2px 16px' }}>
+            {list.map((m) => (
+              <PosterCard key={m.id} movie={m} />
+            ))}
+          </div>
+          {hasMore && (
+            <div style={{ textAlign: 'center', marginTop: 6 }}>
+              <LoadMoreButton onClick={loadMore} loading={loading} />
+            </div>
+          )}
+        </>
+      ) : (
+        <RowScroller onNearEnd={hasMore ? loadMore : undefined}>
+          {list.map((m) => (
+            <div key={m.id} style={{ flex: 'none', width: 174, scrollSnapAlign: 'start' }}>
+              <PosterCard movie={m} />
+            </div>
+          ))}
+        </RowScroller>
+      )}
+    </section>
+  )
+}
+
+function RowHeader({ title, expanded, onToggle, showToggle }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+      <h2 className="fm-disp" style={{ margin: 0, fontSize: 29, letterSpacing: '-.2px' }}>
+        {title}
+      </h2>
+      {showToggle && <SeeAll expanded={expanded} onClick={onToggle} />}
+    </div>
+  )
 }
 
 function SeeAll({ expanded, onClick }) {
@@ -408,6 +480,30 @@ function SeeAll({ expanded, onClick }) {
       }}
     >
       {expanded ? 'Show less' : 'SEE ALL ›'}
+    </button>
+  )
+}
+
+function LoadMoreButton({ onClick, loading }) {
+  const [hov, bind] = useHover()
+  return (
+    <button
+      {...bind}
+      onClick={onClick}
+      disabled={loading}
+      style={{
+        padding: '11px 26px',
+        border: `1px solid ${hov ? 'var(--fm-accent)' : 'var(--fm-border)'}`,
+        background: 'var(--fm-input)',
+        borderRadius: 12,
+        color: 'var(--fm-text)',
+        fontWeight: 800,
+        fontSize: 13.5,
+        cursor: loading ? 'default' : 'pointer',
+        opacity: loading ? 0.6 : 1
+      }}
+    >
+      {loading ? 'Loading…' : 'Load more'}
     </button>
   )
 }

@@ -1,6 +1,8 @@
 import 'dotenv/config'
 import cors from 'cors'
 import express from 'express'
+import discoverRouter from './routes/discover.js'
+import genresRouter from './routes/genres.js'
 import moviesRouter from './routes/movies.js'
 import peopleRouter from './routes/people.js'
 import searchRouter from './routes/search.js'
@@ -16,5 +18,7 @@ app.use('/api/movies', moviesRouter)
 app.use('/api/search', searchRouter)
 app.use('/api/trending', trendingRouter)
 app.use('/api/people', peopleRouter)
+app.use('/api/discover', discoverRouter)
+app.use('/api/genres', genresRouter)
 
 app.listen(PORT, () => console.log(`Flixmate backend running on http://localhost:${PORT}`))

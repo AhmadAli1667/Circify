@@ -1,5 +1,6 @@
+import { useEffect } from 'react'
 import { useStore } from '../app/storeContext'
-import { getActor, filmsOf } from '../app/catalog'
+import { usePersonDetails } from '../app/usePersonDetails'
 import { grad } from '../app/art'
 import PosterCard from '../components/PosterCard'
 import PosterImage from '../components/PosterImage'
@@ -7,29 +8,42 @@ import { SoonTag } from '../components/primitives'
 import { useHover } from '../app/ui'
 
 /**
- * Actor page. Names with a record in data/actors.js get their photograph and
- * biography; everyone else billed in the catalogue gets a monogram card and a
- * flagged placeholder instead of invented prose.
+ * Actor page. Bio, photo and filmography come straight from TMDb's person +
+ * combined-credits endpoints, no more curated/placeholder split, since TMDb
+ * has real data for essentially every billed actor.
  */
 export default function Actor() {
-  const { state, nav } = useStore()
-  const actor = getActor(state.actorSlug)
+  const { state, nav, cacheMovies } = useStore()
+  const actor = usePersonDetails(state.actorId, state.genreMap)
+
+  useEffect(() => {
+    if (actor?.filmography?.length) cacheMovies(actor.filmography)
+  }, [actor, cacheMovies])
+
+  if (!state.actorId) {
+    return (
+      <div style={{ padding: 40, maxWidth: 1180, margin: '0 auto' }}>
+        <BackBtn onClick={() => nav('home')} />
+        <p style={{ color: 'var(--fm-muted)', fontWeight: 600 }}>No performer selected.</p>
+      </div>
+    )
+  }
 
   if (!actor) {
     return (
       <div style={{ padding: 40, maxWidth: 1180, margin: '0 auto' }}>
         <BackBtn onClick={() => nav('home')} />
-        <p style={{ color: 'var(--fm-muted)', fontWeight: 600 }}>That performer isn&apos;t in the catalogue.</p>
+        <p style={{ color: 'var(--fm-muted)', fontWeight: 600 }}>Loading…</p>
       </div>
     )
   }
 
-  const films = filmsOf(actor.slug)
-  const avgRating = films.length ? (films.reduce((a, b) => a + b.rating, 0) / films.length).toFixed(1) : '—'
-  const topFilm = films.length ? films.reduce((a, b) => (b.rating > a.rating ? b : a)).title : '—'
+  const films = actor.filmography
+  const avgRating = films.length ? (films.reduce((a, b) => a + b.rating, 0) / films.length).toFixed(1) : 'N/A'
+  const topFilm = films.length ? films.reduce((a, b) => (b.rating > a.rating ? b : a)).title : 'N/A'
 
   const stats = [
-    { value: films.length, label: 'Films in catalogue' },
+    { value: films.length, label: 'Films in filmography' },
     { value: avgRating, label: 'Avg. rating' },
     { value: topFilm, label: 'Top film' }
   ]
@@ -71,13 +85,24 @@ export default function Actor() {
               letterSpacing: '1.5px',
               textTransform: 'uppercase',
               color: 'var(--fm-accent)',
-              marginBottom: 8
+              marginBottom: 8,
+              flexWrap: 'wrap'
             }}
           >
             Actor
             {actor.knownForRole && (
               <span style={{ color: 'var(--fm-muted)', letterSpacing: '.4px', textTransform: 'none', fontWeight: 700 }}>
                 · known for {actor.knownForRole}
+              </span>
+            )}
+            {actor.age != null && (
+              <span style={{ color: 'var(--fm-muted)', letterSpacing: '.4px', textTransform: 'none', fontWeight: 700 }}>
+                · age {actor.age}
+              </span>
+            )}
+            {actor.placeOfBirth && (
+              <span style={{ color: 'var(--fm-muted)', letterSpacing: '.4px', textTransform: 'none', fontWeight: 700 }}>
+                · {actor.placeOfBirth}
               </span>
             )}
           </div>
@@ -117,7 +142,7 @@ export default function Actor() {
                 fontSize: 14
               }}
             >
-              Biography for {actor.name} — coming soon <SoonTag />
+              No biography on file for {actor.name} <SoonTag />
             </p>
           )}
 
@@ -133,17 +158,6 @@ export default function Actor() {
               </div>
             ))}
           </div>
-
-          {actor.social?.wikipedia && (
-            <a
-              href={actor.social.wikipedia}
-              target="_blank"
-              rel="noreferrer"
-              style={{ display: 'inline-block', marginTop: 20, fontWeight: 800, fontSize: 13.5 }}
-            >
-              Wikipedia ↗
-            </a>
-          )}
         </div>
       </div>
 
@@ -157,9 +171,7 @@ export default function Actor() {
           ))}
         </div>
       ) : (
-        <p style={{ color: 'var(--fm-muted)', fontWeight: 600 }}>
-          No titles from this performer are in the catalogue yet.
-        </p>
+        <p style={{ color: 'var(--fm-muted)', fontWeight: 600 }}>No movie credits on file for this performer.</p>
       )}
     </div>
   )

@@ -17,7 +17,7 @@ export default function PosterCard({ movie }) {
 
   const inWatch = state.watchlist.includes(movie.id)
   const showArt = Boolean(movie.posterUrl) && !imgFailed
-  const credits = `Starring ${movie.leadCast.join(' · ')}`
+  const credits = movie.leadCast.length ? `Starring ${movie.leadCast.join(' · ')}` : null
 
   return (
     <div onClick={() => openMovie(movie.id)} style={{ width: '100%', cursor: 'pointer' }}>
@@ -156,22 +156,24 @@ export default function PosterCard({ movie }) {
         />
 
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '12px 14px' }}>
-          <div
-            style={{
-              fontSize: 6.5,
-              letterSpacing: '.35px',
-              lineHeight: 1.6,
-              color: 'rgba(255,255,255,.52)',
-              fontWeight: 800,
-              textTransform: 'uppercase',
-              marginBottom: 9,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}
-          >
-            {credits}
-          </div>
+          {credits && (
+            <div
+              style={{
+                fontSize: 6.5,
+                letterSpacing: '.35px',
+                lineHeight: 1.6,
+                color: 'rgba(255,255,255,.52)',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                marginBottom: 9,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}
+            >
+              {credits}
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ color: '#ffce54', fontSize: 12 }}>★</span>
             <span style={{ fontWeight: 800, fontSize: 12.5, color: '#fff' }}>{movie.rating}</span>

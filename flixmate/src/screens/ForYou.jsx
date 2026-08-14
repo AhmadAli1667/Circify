@@ -1,10 +1,13 @@
-import { useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../app/storeContext'
-import { movies as MOVIES } from '../app/catalog'
+import { useMovieDetails } from '../app/useMovieDetails'
+import { usePaginatedList } from '../app/usePaginatedList'
+import { adaptMovie } from '../app/catalog'
+import * as api from '../app/tmdbApi'
 import { backdrop, grad } from '../app/art'
 import PosterImage from '../components/PosterImage'
-import { BackButton, SoonTag } from '../components/primitives'
-import { useHover } from '../app/ui'
+import { BackButton } from '../components/primitives'
+import { REVIEW_POOL, useHover } from '../app/ui'
 
 const REASONS = [
   'Because you rated it five stars',
@@ -17,34 +20,59 @@ const REASONS = [
   'Critics and you agree'
 ]
 
-/** Illustrative community reviews — no review feed exists in the catalogue. */
-const REVIEW_POOL = [
-  ['Maya R.', 18, '★★★★★', 'Stuck with me for days — the final act is a gut-punch. Instant favourite.'],
-  ['Devon C.', 280, '★★★★', 'Gorgeous and quietly devastating. Worth every minute.'],
-  ['Priya N.', 150, '★★★★★', 'Exactly my kind of film — the performances are unreal.'],
-  ['Theo B.', 95, '★★★', 'Solid if a little familiar, but I still had a great time.']
-]
-
 /**
- * For You — a full-height vertical snap feed, one pick per screen.
+ * For You: a full-height vertical snap feed, one pick per screen. Backed by
+ * TMDb's popular list (paginated, genuinely doesn't run out), re-sorted so
+ * whatever matches the user's rated taste surfaces first.
  */
 export default function ForYou() {
-  const { state, nav } = useStore()
+  const { state, nav, cacheMovies } = useStore()
   const feedEl = useRef(null)
+  const [activeId, setActiveId] = useState(null)
+
+  const fetchPage = useCallback((page) => api.getPopular(page), [])
+  const adapt = useCallback((m) => adaptMovie(m, state.genreMap), [state.genreMap])
+  const { items: rawFeed, loadMore, hasMore, loading } = usePaginatedList(fetchPage, adapt)
+
+  useEffect(() => {
+    if (rawFeed.length) cacheMovies(rawFeed)
+  }, [rawFeed, cacheMovies])
 
   const feed = useMemo(() => {
     const loved = Object.entries(state.ratings)
       .filter(([, v]) => v >= 4)
-      .map(([id]) => MOVIES.find((m) => m.id === Number(id)))
+      .map(([id]) => state.movies.find((m) => m.id === Number(id)))
       .filter(Boolean)
     const tasteGenres = loved.length ? [...new Set(loved.flatMap((m) => m.genres))] : ['Sci-Fi', 'Drama']
 
-    const tuned = [...MOVIES]
-      .filter((m) => m.genres.some((g) => tasteGenres.includes(g)))
-      .sort((a, b) => b.rating - a.rating)
-    const rest = [...MOVIES].sort((a, b) => b.rating - a.rating).filter((m) => !tuned.includes(m))
-    return [...tuned, ...rest].slice(0, 10)
-  }, [state.ratings])
+    const tuned = rawFeed.filter((m) => m.genres.some((g) => tasteGenres.includes(g)))
+    const rest = rawFeed.filter((m) => !tuned.includes(m))
+    return [...tuned, ...rest]
+  }, [rawFeed, state.movies, state.ratings])
+
+  const effectiveActiveId = activeId ?? feed[0]?.id ?? null
+
+  // Auto-play follows scroll position: whichever card is mostly in view becomes active.
+  useEffect(() => {
+    const root = feedEl.current
+    if (!root) return
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) setActiveId(Number(e.target.dataset.movieId))
+        })
+      },
+      { root, threshold: 0.6 }
+    )
+    root.querySelectorAll('[data-movie-id]').forEach((el) => obs.observe(el))
+    return () => obs.disconnect()
+  }, [feed])
+
+  const onScroll = () => {
+    const el = feedEl.current
+    if (!el || loading || !hasMore) return
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - el.clientHeight) loadMore()
+  }
 
   const scroll = (dir) => {
     if (feedEl.current) {
@@ -72,12 +100,13 @@ export default function ForYou() {
           For You, Alex
         </h1>
         <p style={{ margin: 0, color: 'var(--fm-muted)', fontWeight: 600, fontSize: 13.5 }}>
-          Scroll like Shorts — one pick at a time, tuned to your taste.
+          Scroll like Shorts: one pick at a time, tuned to your taste.
         </p>
       </div>
 
       <div
         ref={feedEl}
+        onScroll={onScroll}
         className="fm-scroll"
         style={{
           height: 'calc(100vh - 175px)',
@@ -90,7 +119,13 @@ export default function ForYou() {
         }}
       >
         {feed.map((m, i) => (
-          <FeedItem key={m.id} movie={m} reason={REASONS[i % REASONS.length]} index={i} />
+          <FeedItem
+            key={m.id}
+            movie={m}
+            reason={REASONS[i % REASONS.length]}
+            isActive={m.id === effectiveActiveId}
+            genreMap={state.genreMap}
+          />
         ))}
       </div>
 
@@ -136,17 +171,20 @@ function FeedNav({ label, glyph, onClick }) {
   )
 }
 
-function FeedItem({ movie, reason, index }) {
+function FeedItem({ movie, reason, isActive, genreMap }) {
   const { state, patch, openMovie, toggleWatch } = useStore()
+  const [muted, setMuted] = useState(true)
 
   const liked = Boolean(state.feedLiked[movie.id])
   const saved = state.watchlist.includes(movie.id)
-  const tab = state.feedTab[movie.id] || 'poster'
+  const tab = state.feedTab[movie.id] ?? (isActive ? 'trailer' : 'poster')
+  const detail = useMovieDetails(tab === 'trailer' ? movie.id : null, genreMap)
 
-  const reviews = [REVIEW_POOL[index % REVIEW_POOL.length], REVIEW_POOL[(index + 1) % REVIEW_POOL.length]]
+  const setTab = (t) => patch((s) => ({ feedTab: { ...s.feedTab, [movie.id]: t } }))
 
   return (
     <div
+      data-movie-id={movie.id}
       style={{
         position: 'relative',
         width: '100%',
@@ -159,51 +197,115 @@ function FeedItem({ movie, reason, index }) {
     >
       {tab === 'poster' && <PosterImage src={movie.posterUrl} />}
 
-      {/* Trailer playback needs real video ids, which the catalogue doesn't carry. */}
-      {tab === 'trailer' && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'grid',
-            placeItems: 'center',
-            padding: 28,
-            textAlign: 'center'
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>▶</div>
-            <div style={{ color: '#fff', fontWeight: 900, fontSize: 18, marginBottom: 6 }}>
-              In-app trailers — coming soon
-            </div>
-            <p
+      {tab === 'trailer' &&
+        (detail?.trailerKey ? (
+          <>
+            <iframe
+              title={`${movie.title} trailer`}
+              src={`https://www.youtube.com/embed/${detail.trailerKey}?autoplay=1&mute=${muted ? 1 : 0}&loop=1&playlist=${detail.trailerKey}&controls=0`}
+              allow="autoplay; encrypted-media"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+            />
+            <button
+              onClick={() => setMuted((m) => !m)}
+              aria-label={muted ? 'Unmute' : 'Mute'}
               style={{
-                margin: '0 0 16px',
-                color: 'rgba(255,255,255,.75)',
-                fontWeight: 600,
-                fontSize: 13,
-                maxWidth: 260
-              }}
-            >
-              No trailer ids in the catalogue yet. Open the search on YouTube in the meantime.
-            </p>
-            <a
-              href={movie.trailerLink}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                display: 'inline-block',
-                padding: '10px 18px',
-                borderRadius: 12,
-                background: 'rgba(255,255,255,.16)',
-                border: '1px solid rgba(255,255,255,.35)',
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                zIndex: 3,
+                width: 34,
+                height: 34,
+                borderRadius: '50%',
+                border: 'none',
+                background: 'rgba(0,0,0,.5)',
+                backdropFilter: 'blur(6px)',
                 color: '#fff',
-                fontWeight: 800,
-                fontSize: 13
+                fontSize: 15,
+                cursor: 'pointer'
               }}
             >
-              Find on YouTube ↗
-            </a>
+              {muted ? '🔇' : '🔊'}
+            </button>
+          </>
+        ) : (
+          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 28, textAlign: 'center' }}>
+            <div>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>▶</div>
+              {!detail ? (
+                <div style={{ color: '#fff', fontWeight: 900, fontSize: 16 }}>Loading trailer…</div>
+              ) : (
+                <>
+                  <div style={{ color: '#fff', fontWeight: 900, fontSize: 16, marginBottom: 14 }}>
+                    Watch the trailer on YouTube
+                  </div>
+                  <a
+                    href={movie.trailerLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      display: 'inline-block',
+                      padding: '10px 18px',
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,.16)',
+                      border: '1px solid rgba(255,255,255,.35)',
+                      color: '#fff',
+                      fontWeight: 800,
+                      fontSize: 13
+                    }}
+                  >
+                    Open YouTube ↗
+                  </a>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+
+      {tab === 'comments' && (
+        <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '70px 16px 90px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.6)', marginBottom: 10 }}>
+            Sample comments, there's no review feed behind these yet.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {REVIEW_POOL.map(([who, hue, stars, text]) => (
+              <div
+                key={who}
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  alignItems: 'flex-start',
+                  background: 'rgba(255,255,255,.08)',
+                  backdropFilter: 'blur(6px)',
+                  borderRadius: 12,
+                  padding: '10px 12px'
+                }}
+              >
+                <span
+                  style={{
+                    width: 26,
+                    height: 26,
+                    flex: 'none',
+                    borderRadius: '50%',
+                    background: grad(hue),
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: '#fff',
+                    fontWeight: 900,
+                    fontSize: 11
+                  }}
+                >
+                  {who[0]}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: '#fff', fontWeight: 800, fontSize: 12 }}>{who}</span>
+                    <span style={{ color: '#ffce54', fontSize: 10.5 }}>{stars}</span>
+                  </div>
+                  <div style={{ color: 'rgba(255,255,255,.82)', fontWeight: 500, fontSize: 12, lineHeight: 1.4 }}>{text}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -244,17 +346,14 @@ function FeedItem({ movie, reason, index }) {
           <span style={{ color: '#fff', fontWeight: 800, fontSize: 11 }}>{reason}</span>
         </div>
         <div style={{ display: 'flex', padding: 3, borderRadius: 14, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(8px)' }}>
-          <TabButton
-            active={tab === 'poster'}
-            onClick={() => patch((s) => ({ feedTab: { ...s.feedTab, [movie.id]: 'poster' } }))}
-          >
+          <TabButton active={tab === 'poster'} onClick={() => setTab('poster')}>
             Poster
           </TabButton>
-          <TabButton
-            active={tab === 'trailer'}
-            onClick={() => patch((s) => ({ feedTab: { ...s.feedTab, [movie.id]: 'trailer' } }))}
-          >
+          <TabButton active={tab === 'trailer'} onClick={() => setTab('trailer')}>
             ▶ Trailer
+          </TabButton>
+          <TabButton active={tab === 'comments'} onClick={() => setTab('comments')}>
+            Comments
           </TabButton>
         </div>
       </div>
@@ -287,7 +386,6 @@ function FeedItem({ movie, reason, index }) {
             <span style={{ color: '#ffce54' }}>★ {movie.rating}</span>
             <span>· {movie.year}</span>
             <span>· {movie.genre}</span>
-            <span>· {movie.runtime}</span>
           </div>
 
           <div
@@ -308,7 +406,7 @@ function FeedItem({ movie, reason, index }) {
           <p
             className="fm-clamp-2"
             style={{
-              margin: '0 0 10px',
+              margin: '0 0 12px',
               color: 'rgba(255,255,255,.86)',
               fontWeight: 500,
               fontSize: 12,
@@ -317,50 +415,6 @@ function FeedItem({ movie, reason, index }) {
           >
             {movie.synopsis}
           </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-            {reviews.map(([who, hue, stars, text]) => (
-              <div
-                key={who}
-                style={{
-                  display: 'flex',
-                  gap: 8,
-                  alignItems: 'flex-start',
-                  background: 'rgba(0,0,0,.45)',
-                  backdropFilter: 'blur(6px)',
-                  borderRadius: 11,
-                  padding: '7px 9px'
-                }}
-              >
-                <span
-                  style={{
-                    width: 22,
-                    height: 22,
-                    flex: 'none',
-                    borderRadius: '50%',
-                    background: grad(hue),
-                    display: 'grid',
-                    placeItems: 'center',
-                    color: '#fff',
-                    fontWeight: 900,
-                    fontSize: 10
-                  }}
-                >
-                  {who[0]}
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: '#fff', fontWeight: 800, fontSize: 11 }}>{who}</span>
-                    <span style={{ color: '#ffce54', fontSize: 9.5 }}>{stars}</span>
-                    <SoonTag style={{ fontSize: 8 }} />
-                  </div>
-                  <div style={{ color: 'rgba(255,255,255,.78)', fontWeight: 500, fontSize: 11, lineHeight: 1.35 }}>
-                    {text}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
 
           <DetailsButton onClick={() => openMovie(movie.id)} />
         </div>

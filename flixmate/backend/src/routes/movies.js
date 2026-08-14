@@ -39,4 +39,13 @@ router.get('/:id/providers', async (req, res) => {
   }
 })
 
+router.get('/:id/recommendations', async (req, res) => {
+  try {
+    const data = await tmdbFetch(`/movie/${req.params.id}/recommendations`)
+    res.json(data)
+  } catch (err) {
+    res.status(502).json({ error: err.message })
+  }
+})
+
 export default router

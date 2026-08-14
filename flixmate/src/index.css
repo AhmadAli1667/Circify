@@ -59,6 +59,14 @@ a:hover {
   scrollbar-width: thin;
 }
 
+.fm-noscrollbar {
+  scrollbar-width: none;
+}
+
+.fm-noscrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 input,
 button,
 select,

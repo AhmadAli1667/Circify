@@ -1,10 +1,9 @@
 import { useStore } from '../app/storeContext'
-import { getMovie } from '../app/catalog'
 import PosterCard from '../components/PosterCard'
 import { RESULT_GRID, useHover } from '../app/ui'
 
 export default function Watchlist() {
-  const { state, patch, nav } = useStore()
+  const { state, patch, nav, getMovie } = useStore()
   const saved = state.watchlist.map(getMovie).filter(Boolean)
 
   return (

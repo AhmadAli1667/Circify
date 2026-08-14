@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import { useStore } from '../app/storeContext'
 import PosterCard from '../components/PosterCard'
-import ActiveChips, { NoResults } from '../components/ActiveChips'
+import RowScroller from '../components/RowScroller'
+import ActiveChips from '../components/ActiveChips'
 import { useActiveChips } from '../app/useActiveChips'
 import { RESULT_GRID, useHover } from '../app/ui'
 
@@ -43,14 +45,88 @@ export default function Search() {
       <ActiveChips chips={chips} showLabel onClearAll={resetFilters} />
 
       {results.length ? (
-        <div style={RESULT_GRID}>
+        <div key="results" style={{ ...RESULT_GRID, animation: 'fmFade .3s ease' }}>
           {results.map((m) => (
             <PosterCard key={m.id} movie={m} />
           ))}
         </div>
       ) : (
-        <NoResults withIcon hint="Loosen a filter or try another search." />
+        <SearchSuggestions />
       )}
+    </div>
+  )
+}
+
+/**
+ * Shown instead of a bare "no results" dead end, either while the live
+ * search request is still in flight or once it's back with nothing. Either
+ * way there's always something to look at and tap into, not a stop sign.
+ */
+function SearchSuggestions() {
+  const { state, resetFilters } = useStore()
+  const picks = useMemo(
+    () => [...state.movies].sort((a, b) => b.popularity - a.popularity).slice(0, 16),
+    [state.movies]
+  )
+
+  return (
+    <div style={{ animation: 'fmFade .35s ease', paddingTop: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+        {state.searching ? (
+          <>
+            <TypingDots />
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fm-muted)' }}>Searching…</span>
+          </>
+        ) : (
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fm-muted)' }}>
+            No exact matches yet. Here's what's popular right now:
+          </span>
+        )}
+      </div>
+      <div style={{ marginBottom: 22 }}>
+        <button
+          onClick={resetFilters}
+          style={{
+            border: 'none',
+            background: 'none',
+            color: 'var(--fm-accent)',
+            fontWeight: 800,
+            fontSize: 12.5,
+            cursor: 'pointer',
+            padding: 0,
+            textDecoration: 'underline'
+          }}
+        >
+          Clear search
+        </button>
+      </div>
+
+      <RowScroller>
+        {picks.map((m) => (
+          <div key={m.id} style={{ flex: 'none', width: 174, scrollSnapAlign: 'start' }}>
+            <PosterCard movie={m} />
+          </div>
+        ))}
+      </RowScroller>
+    </div>
+  )
+}
+
+function TypingDots() {
+  return (
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+      {[0, 0.2, 0.4].map((delay) => (
+        <span
+          key={delay}
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: 'var(--fm-accent)',
+            animation: `fmDots 1.2s ${delay}s infinite`
+          }}
+        />
+      ))}
     </div>
   )
 }

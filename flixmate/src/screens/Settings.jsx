@@ -5,8 +5,8 @@ import { SoonTag } from '../components/primitives'
  * Settings.
  *
  * Toggles flip locally and persist to this device. Anything that needs a
- * server — email changes, password, account deletion, account linking,
- * cross-device sync — is labelled rather than faked.
+ * server (email changes, password, account deletion, account linking,
+ * cross-device sync) is labelled rather than faked.
  */
 export default function Settings() {
   const { state, patch, showSoon } = useStore()
@@ -20,7 +20,7 @@ export default function Settings() {
   const sections = [
     {
       title: 'Account',
-      note: 'Managed on the server — coming soon',
+      note: 'Managed on the server: coming soon',
       rows: [
         { label: 'Email', sub: 'alex@flixmate.app', btn: 'Change', soon: true },
         { label: 'Password', sub: 'Last changed 3 months ago', btn: 'Update', soon: true }
@@ -41,7 +41,7 @@ export default function Settings() {
     },
     {
       title: 'Connected accounts',
-      note: 'OAuth linking — coming soon',
+      note: 'OAuth linking: coming soon',
       rows: [{ label: 'Google', sub: 'alex@gmail.com', key: 'google' }]
     },
     {
@@ -88,7 +88,7 @@ export default function Settings() {
         <div style={{ flex: 1, minWidth: 180 }}>
           <div style={{ fontWeight: 800, fontSize: 15 }}>Profile photo</div>
           <div style={{ fontSize: 12.5, color: 'var(--fm-muted)', fontWeight: 600 }}>
-            PNG or JPG — stored on this device
+            PNG or JPG, stored on this device
           </div>
         </div>
         <label
@@ -198,7 +198,7 @@ export default function Settings() {
                   <Switch on={state.toggles[r.key]} onClick={toggle(r.key)} />
                 ) : (
                   <button
-                    onClick={() => showSoon(`${r.label} — ${r.btn.toLowerCase()}`)}
+                    onClick={() => showSoon(`${r.label}: ${r.btn.toLowerCase()}`)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',

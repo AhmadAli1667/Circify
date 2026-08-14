@@ -7,7 +7,7 @@ import { useState } from 'react'
  * components, which is what keeps Fast Refresh working during `npm run dev`.
  */
 
-/** Hover state helper — returns [isHovered, propsToSpread]. */
+/** Hover state helper. Returns [isHovered, propsToSpread]. */
 export function useHover() {
   const [on, setOn] = useState(false)
   return [on, { onMouseEnter: () => setOn(true), onMouseLeave: () => setOn(false) }]
@@ -42,3 +42,15 @@ export const CHAT_CHIPS = ['Rainy-night slow burn', 'Feel-good comedy', 'Mind-be
 
 /** Human labels for the decade filter keys. */
 export const DECADE_LABEL = { 2020: "'20s", 2010: "'10s", 2000: "'00s", class: 'Classics' }
+
+/**
+ * Illustrative community reviews, shared by ForYou's Comments tab and the
+ * movie modal's Reviews tab. No review feed exists in the catalogue, this is
+ * sample content, honestly labeled wherever it appears.
+ */
+export const REVIEW_POOL = [
+  ['Maya R.', 18, '★★★★★', 'Stuck with me for days, the final act is a gut-punch. Instant favourite.'],
+  ['Devon C.', 280, '★★★★', 'Gorgeous and quietly devastating. Worth every minute.'],
+  ['Priya N.', 150, '★★★★★', 'Exactly my kind of film, the performances are unreal.'],
+  ['Theo B.', 95, '★★★', 'Solid if a little familiar, but I still had a great time.']
+]

@@ -110,7 +110,7 @@ export default function Footer() {
                 fontSize: 13.5
               }}
             >
-              ✓ Saved on this device — delivery coming soon
+              ✓ Saved on this device, delivery coming soon
             </div>
           ) : (
             <>
@@ -173,7 +173,7 @@ export default function Footer() {
           © 2026 Flixmate · Crafted by <span style={{ color: 'var(--fm-accent)' }}>&nbsp;Ahmad Ali</span>
         </span>
         <span style={{ fontSize: 12.5, color: 'var(--fm-muted)', fontWeight: 600 }}>
-          Ratings and cast from the local catalogue · streaming and social data are illustrative
+          Ratings, cast, trailers and streaming availability from TMDb · social activity is illustrative
         </span>
       </div>
     </footer>

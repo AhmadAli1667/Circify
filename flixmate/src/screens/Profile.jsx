@@ -1,5 +1,4 @@
 import { useStore } from '../app/storeContext'
-import { getMovie } from '../app/catalog'
 import { grad } from '../app/art'
 import PosterImage from '../components/PosterImage'
 import { SoonTag } from '../components/primitives'
@@ -12,7 +11,7 @@ const TABS = [
 ]
 
 export default function Profile() {
-  const { state, patch, openMovie, showSoon } = useStore()
+  const { state, patch, openMovie, showSoon, getMovie } = useStore()
 
   const avatarBg = state.avatar
     ? `#111 center/cover no-repeat url(${state.avatar})`
@@ -143,7 +142,7 @@ export default function Profile() {
           </div>
         ) : (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--fm-muted)', fontWeight: 600, fontSize: 15 }}>
-            Nothing here yet — start rating and saving films.
+            Nothing here yet. Start rating and saving films.
           </div>
         )}
       </div>

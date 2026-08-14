@@ -7,7 +7,7 @@
  * because no title in the catalogue ships a wide still.
  */
 
-/** Portrait poster fill for a given hue (0–359). */
+/** Portrait poster fill for a given hue (0-359). */
 export const grad = (h) =>
   `radial-gradient(80% 62% at 74% 14%, hsl(${h} 62% 48%) 0%, transparent 56%), ` +
   `linear-gradient(158deg, hsl(${h} 54% 30%), hsl(${(h + 34) % 360} 60% 11%))`

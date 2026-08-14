@@ -7,7 +7,7 @@ import ChatMessages from '../components/ChatMessages'
  * Full-page curator.
  *
  * Picks come from a local keyword matcher over the catalogue, not a language
- * model — the badge under the header says as much.
+ * model. The badge under the header says as much.
  */
 export default function Chat() {
   const { state } = useStore()
@@ -74,7 +74,7 @@ function ChatLanding() {
           maxWidth: 460
         }}
       >
-        Tell me a vibe, an actor, or the kind of night you want — I know your taste.
+        Tell me a vibe, an actor, or the kind of night you want. I know your taste.
       </p>
       <div
         style={{

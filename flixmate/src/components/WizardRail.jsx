@@ -118,7 +118,7 @@ export default function WizardRail() {
           </div>
 
           <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--fm-muted)', fontWeight: 600 }}>
-            Search or tune the mood — results appear right on your home screen.
+            Search or tune the mood, results appear right on your home screen.
           </p>
 
           <div style={{ position: 'relative', marginBottom: 22 }}>

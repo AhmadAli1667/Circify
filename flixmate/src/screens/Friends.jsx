@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { useStore } from '../app/storeContext'
-import { movies as MOVIES } from '../app/catalog'
 import { grad } from '../app/art'
 import PosterImage from '../components/PosterImage'
 import { BackButton, SoonTag } from '../components/primitives'
@@ -21,7 +20,7 @@ const FRIENDS = [
 ]
 
 const ACTIONS = [
-  ['rated', ' — loved it', '★★★★½'],
+  ['rated', ', loved it', '★★★★½'],
   ['added', ' to their watchlist', ''],
   ['reviewed', '', '★★★★'],
   ['rated', '', '★★★½'],
@@ -34,12 +33,22 @@ export default function Friends() {
   const { state, patch, nav, openMovie } = useStore()
 
   const watching = useMemo(
-    () => FRIENDS.map((f, i) => ({ friend: f, movie: MOVIES[(i * 7 + 1) % MOVIES.length] })),
-    []
+    () =>
+      state.movies.length
+        ? FRIENDS.map((f, i) => ({ friend: f, movie: state.movies[(i * 7 + 1) % state.movies.length] }))
+        : [],
+    [state.movies]
   )
   const activity = useMemo(
-    () => FRIENDS.map((f, i) => ({ friend: f, movie: MOVIES[(i * 13 + 2) % MOVIES.length], action: ACTIONS[i % 5] })),
-    []
+    () =>
+      state.movies.length
+        ? FRIENDS.map((f, i) => ({
+            friend: f,
+            movie: state.movies[(i * 13 + 2) % state.movies.length],
+            action: ACTIONS[i % 5]
+          }))
+        : [],
+    [state.movies]
   )
 
   return (
@@ -68,7 +77,7 @@ export default function Friends() {
         <span style={{ color: 'var(--fm-accent)', fontSize: 18 }}>✦</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 900, fontSize: 14, color: 'var(--fm-accent)' }}>
-            Following real people — coming soon
+            Following real people: coming soon
           </div>
           <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fm-muted)' }}>
             Accounts and the social graph aren&apos;t wired up yet. The feed below is a preview with sample people.

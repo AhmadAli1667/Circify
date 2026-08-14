@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { useStore } from '../app/storeContext'
-import { movies as MOVIES } from '../app/catalog'
 import { grad } from '../app/art'
 import PosterImage from '../components/PosterImage'
 import { SoonTag } from '../components/primitives'
@@ -10,8 +9,8 @@ import { useHover } from '../app/ui'
  * In Theatres.
  *
  * The catalogue has no showtime or streaming-provider feed, so the listings
- * are drawn from the newest titles and the provider badges are illustrative —
- * both are flagged in the header.
+ * are drawn from the newest titles and the provider badges are illustrative,
+ * both flagged in the header.
  */
 const PROVIDERS = [
   ['Netflix', '#e50914'],
@@ -21,12 +20,12 @@ const PROVIDERS = [
 ]
 
 export default function Theatres() {
-  const { openMovie, showSoon } = useStore()
+  const { state, openMovie, showSoon } = useStore()
 
   const { nowPlaying, comingSoon } = useMemo(() => {
-    const byYear = [...MOVIES].sort((a, b) => b.year - a.year || b.rating - a.rating)
+    const byYear = [...state.movies].sort((a, b) => b.year - a.year || b.rating - a.rating)
     return { nowPlaying: byYear.slice(0, 6), comingSoon: byYear.slice(6, 12) }
-  }, [])
+  }, [state.movies])
 
   return (
     <div style={{ padding: '34px 40px 64px', maxWidth: 1440, margin: '0 auto', animation: 'fmFade .35s ease' }}>
@@ -187,7 +186,7 @@ function NowPlayingCard({ movie, onClick }) {
             {movie.title}
           </div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,.72)', fontWeight: 700, marginTop: 4 }}>
-            ★ {movie.rating} · {movie.runtime}
+            ★ {movie.rating}
           </div>
         </div>
       </div>

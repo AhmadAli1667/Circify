@@ -168,7 +168,7 @@ function FilterPopover() {
   const sortOptions = [
     { k: 'rating', l: 'Top rated' },
     { k: 'year', l: 'Newest' },
-    { k: 'title', l: 'A–Z' }
+    { k: 'title', l: 'A-Z' }
   ]
   const ratingTiers = [
     { k: 0, l: 'Any' },
