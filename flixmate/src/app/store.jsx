@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { applyTheme } from './theme'
 import { adaptMovie, SERIES_AVAILABLE } from './catalog'
+import { hueFor } from './art'
 import * as api from './tmdbApi'
+import * as authApi from './authApi'
+import { supabase } from './supabaseClient'
 import { StoreContext } from './storeContext'
 
 const STORAGE_KEY = 'flixmate'
 
-/** Fields mirrored into localStorage: same set the mockup persisted, plus the
- *  movie cache so watchlist/ratings still resolve to real titles after reload. */
+/** Fields mirrored into localStorage: cosmetic/local-only prefs plus the movie
+ *  cache, so browsing still resolves to real titles after a reload. Watchlist,
+ *  ratings, and chat history are account data now, they live in the backend. */
 function readSaved() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
@@ -23,8 +27,6 @@ function writeSaved(state) {
       JSON.stringify({
         preset: state.preset,
         mode: state.mode,
-        watchlist: state.watchlist,
-        ratings: state.ratings,
         avatar: state.avatar,
         movieCache: state.movieCache
       })
@@ -59,9 +61,15 @@ const INITIAL = {
   liveSearchResults: [],
   movieCache: saved.movieCache || {},
 
-  // user data
-  watchlist: saved.watchlist || [],
-  ratings: saved.ratings || {},
+  // account, hydrated from the backend session on mount
+  user: null,
+  authChecked: false,
+  authBusy: false,
+  authError: null,
+  authEmail: '',
+  authDisplayName: '',
+  watchlist: [],
+  ratings: {},
   avatar: saved.avatar || null,
 
   // navigation / transient
@@ -143,7 +151,7 @@ export function StoreProvider({ children }) {
   // Persist the durable slice whenever it changes.
   useEffect(() => {
     writeSaved(state)
-  }, [state.preset, state.mode, state.watchlist, state.ratings, state.avatar, state.movieCache]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.preset, state.mode, state.avatar, state.movieCache]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Paint the theme onto <html>.
   useEffect(() => {
@@ -204,6 +212,47 @@ export function StoreProvider({ children }) {
       alive = false
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // --- account -------------------------------------------------------------
+
+  /** Pulls the signed-in user's watchlist/ratings/chat thread from the backend. */
+  const hydrateAccount = useCallback(
+    async (user) => {
+      const [watchlist, ratings, history] = await Promise.all([
+        api.getWatchlist().catch(() => []),
+        api.getRatings().catch(() => ({})),
+        api.getChatHistory().catch(() => ({ messages: [] }))
+      ])
+      const chatMsgs = history.messages.length
+        ? history.messages.map((m) => ({
+            role: m.role,
+            text: m.text,
+            ...(m.picks?.length ? { movies: m.picks.map((p) => ({ ...p, hue: hueFor(p.title) })) } : {})
+          }))
+        : INITIAL.chatMsgs
+      patch({ user, watchlist, ratings, chatMsgs, authChecked: true, authBusy: false, authError: null })
+    },
+    [patch]
+  )
+
+  // Resolve any existing Supabase session once on load. `INITIAL_SESSION` fires
+  // once immediately with whatever's already there (or null); `SIGNED_OUT`
+  // covers explicit logout plus e.g. a session going invalid elsewhere. Sign-in
+  // itself is handled by the `signup`/`login` actions below, not here, so a
+  // fresh signup/login doesn't hydrate twice.
+  useEffect(() => {
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION') {
+        if (session?.user) hydrateAccount(authApi.normalizeUser(session.user))
+        else patch({ authChecked: true })
+      } else if (event === 'SIGNED_OUT') {
+        patch({ user: null, watchlist: [], ratings: {}, chatMsgs: INITIAL.chatMsgs, authChecked: true })
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [hydrateAccount, patch])
 
   // Debounced live search, merged into the local pool in `results` below.
   // `pool` ignores `liveSearchResults` whenever the query is empty (see below),
@@ -313,19 +362,70 @@ export function StoreProvider({ children }) {
   const openCastCrew = useCallback((id) => nav('castcrew', { castCrewId: id }), [nav])
 
   const toggleWatch = useCallback(
-    (id) =>
-      patch((s) => ({
-        watchlist: s.watchlist.includes(id)
-          ? s.watchlist.filter((x) => x !== id)
-          : [id, ...s.watchlist]
-      })),
-    [patch]
+    (id) => {
+      if (!stateRef.current.user) {
+        showSoon('Sign in to save your watchlist')
+        nav('auth')
+        return
+      }
+      const has = stateRef.current.watchlist.includes(id)
+      patch((s) => ({ watchlist: has ? s.watchlist.filter((x) => x !== id) : [id, ...s.watchlist] }))
+      ;(has ? api.removeFromWatchlist(id) : api.addToWatchlist(id)).catch(() => {})
+    },
+    [patch, showSoon, nav]
   )
 
   const setRating = useCallback(
-    (id, v) => patch((s) => ({ ratings: { ...s.ratings, [id]: v } })),
-    [patch]
+    (id, v) => {
+      if (!stateRef.current.user) {
+        showSoon('Sign in to rate movies')
+        nav('auth')
+        return
+      }
+      patch((s) => ({ ratings: { ...s.ratings, [id]: v } }))
+      api.setRatingRemote(id, v).catch(() => {})
+    },
+    [patch, showSoon, nav]
   )
+
+  const signup = useCallback(
+    async (email, password, displayName) => {
+      patch({ authBusy: true, authError: null })
+      try {
+        const { user, session } = await authApi.signup(email, password, displayName)
+        if (!session) {
+          // Supabase project has "confirm email" on: the account exists but isn't signed in yet.
+          patch({ authBusy: false, authError: 'Check your email to confirm your account, then sign in.' })
+          return
+        }
+        await hydrateAccount(user)
+        nav('home')
+      } catch (e) {
+        patch({ authBusy: false, authError: e.message })
+      }
+    },
+    [patch, hydrateAccount, nav]
+  )
+
+  const login = useCallback(
+    async (email, password) => {
+      patch({ authBusy: true, authError: null })
+      try {
+        const { user } = await authApi.login(email, password)
+        await hydrateAccount(user)
+        nav('home')
+      } catch (e) {
+        patch({ authBusy: false, authError: e.message })
+      }
+    },
+    [patch, hydrateAccount, nav]
+  )
+
+  const logout = useCallback(async () => {
+    await authApi.logout().catch(() => {})
+    patch({ user: null, watchlist: [], ratings: {}, chatMsgs: INITIAL.chatMsgs })
+    nav('home')
+  }, [patch, nav])
 
   const playTrailer = useCallback(
     (id) => patch({ trailerId: id, menuOpen: false, filterOpen: false }),
@@ -425,58 +525,42 @@ export function StoreProvider({ children }) {
 
   // --- assistant ---------------------------------------------------------
 
-  /**
-   * Keyword → genre matcher standing in for a real recommendation model.
-   * Deterministic and offline, exactly as the mockup demonstrated it.
-   */
-  const vibePick = useCallback(
-    (text) => {
-      const kws = (text || '').toLowerCase()
-      let picks = state.movies
-      if (/sci|space|mind|future|alien|robot/.test(kws)) {
-        picks = state.movies.filter((m) => m.genres.includes('Sci-Fi'))
-      } else if (/slow|burn|tense|thril|rain|night|dark|crime/.test(kws)) {
-        picks = state.movies.filter((m) => m.genres.some((g) => ['Thriller', 'Drama', 'Crime'].includes(g)))
-      } else if (/feel|good|cozy|comfort|comedy|road|happy|light|funny/.test(kws)) {
-        picks = state.movies.filter((m) => m.genres.some((g) => ['Comedy', 'Romance'].includes(g)))
-      } else if (/scar|horror|creep|eerie|fright/.test(kws)) {
-        picks = state.movies.filter((m) => m.genres.includes('Horror'))
-      }
-      if (!picks.length) picks = state.movies
-
-      const whys = [
-        'Atmospheric and character-first, exactly the texture you described.',
-        'Slow-building with a payoff that rewards patience.',
-        'Hits the tone without ever tipping into cliché.'
-      ]
-      return [...picks]
-        .sort((a, b) => b.rating - a.rating)
-        .slice(0, 2)
-        .map((m, i) => ({ id: m.id, title: m.title, year: m.year, hue: m.hue, why: whys[i % 3] }))
-    },
-    [state.movies]
-  )
-
+  /** Sends a message to the real backend-hosted assistant and appends its reply. */
   const doChat = useCallback(
     (text) => {
+      if (!stateRef.current.user) {
+        showSoon('Sign in to chat with Flixmate')
+        nav('auth')
+        return
+      }
       patch((s) => ({
         chatMsgs: [...s.chatMsgs, { role: 'user', text }],
         chatInput: '',
         chatTyping: true,
         chat: s.screen === 'chat' ? s.chat : 'open'
       }))
-      setTimeout(() => {
-        const picks = vibePick(text)
-        patch((s) => ({
-          chatTyping: false,
-          chatMsgs: [
-            ...s.chatMsgs,
-            { role: 'bot', text: 'Based on your taste, here are two I think you’ll love:', movies: picks }
-          ]
-        }))
-      }, 1000)
+      api.sendChatMessage(text).then(
+        ({ reply, picks }) => {
+          patch((s) => ({
+            chatTyping: false,
+            chatMsgs: [
+              ...s.chatMsgs,
+              { role: 'bot', text: reply, movies: (picks || []).map((p) => ({ ...p, hue: hueFor(p.title) })) }
+            ]
+          }))
+        },
+        () => {
+          patch((s) => ({
+            chatTyping: false,
+            chatMsgs: [
+              ...s.chatMsgs,
+              { role: 'bot', text: "I'm having trouble reaching my brain right now, try again in a bit." }
+            ]
+          }))
+        }
+      )
     },
-    [patch, vibePick]
+    [patch, showSoon, nav]
   )
 
   const value = useMemo(
@@ -498,7 +582,10 @@ export function StoreProvider({ children }) {
       filtersActive,
       results,
       genres,
-      getMovie
+      getMovie,
+      signup,
+      login,
+      logout
     }),
     [
       state,
@@ -518,7 +605,10 @@ export function StoreProvider({ children }) {
       filtersActive,
       results,
       genres,
-      getMovie
+      getMovie,
+      signup,
+      login,
+      logout
     ]
   )
 

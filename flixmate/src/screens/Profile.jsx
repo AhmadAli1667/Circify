@@ -53,7 +53,10 @@ export default function Profile() {
         />
       </div>
 
-      <div style={{ maxWidth: 1180, margin: '-72px auto 0', padding: '0 40px 64px', position: 'relative' }}>
+      <div
+        className="fm-page-pad"
+        style={{ maxWidth: 1180, margin: '-72px auto 0', paddingTop: 0, paddingBottom: 64, position: 'relative' }}
+      >
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
           <div
             style={{

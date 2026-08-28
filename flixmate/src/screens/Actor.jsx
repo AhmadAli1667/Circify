@@ -22,7 +22,7 @@ export default function Actor() {
 
   if (!state.actorId) {
     return (
-      <div style={{ padding: 40, maxWidth: 1180, margin: '0 auto' }}>
+      <div className="fm-page-pad" style={{ paddingTop: 40, paddingBottom: 40, maxWidth: 1180, margin: '0 auto' }}>
         <BackBtn onClick={() => nav('home')} />
         <p style={{ color: 'var(--fm-muted)', fontWeight: 600 }}>No performer selected.</p>
       </div>
@@ -31,7 +31,7 @@ export default function Actor() {
 
   if (!actor) {
     return (
-      <div style={{ padding: 40, maxWidth: 1180, margin: '0 auto' }}>
+      <div className="fm-page-pad" style={{ paddingTop: 40, paddingBottom: 40, maxWidth: 1180, margin: '0 auto' }}>
         <BackBtn onClick={() => nav('home')} />
         <p style={{ color: 'var(--fm-muted)', fontWeight: 600 }}>Loading…</p>
       </div>
@@ -49,7 +49,10 @@ export default function Actor() {
   ]
 
   return (
-    <div style={{ padding: 40, maxWidth: 1180, margin: '0 auto', animation: 'fmFade .35s ease' }}>
+    <div
+      className="fm-page-pad"
+      style={{ paddingTop: 40, paddingBottom: 40, maxWidth: 1180, margin: '0 auto', animation: 'fmFade .35s ease' }}
+    >
       <BackBtn onClick={() => nav('home')} />
 
       <div style={{ display: 'flex', gap: 34, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 44 }}>

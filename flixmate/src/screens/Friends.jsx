@@ -52,7 +52,10 @@ export default function Friends() {
   )
 
   return (
-    <div style={{ padding: '34px 40px 64px', maxWidth: 1180, margin: '0 auto', animation: 'fmFade .35s ease' }}>
+    <div
+      className="fm-page-pad"
+      style={{ paddingTop: 34, paddingBottom: 64, maxWidth: 1180, margin: '0 auto', animation: 'fmFade .35s ease' }}
+    >
       <BackButton onClick={() => nav('home')} style={{ marginBottom: 16 }} />
 
       <h1 className="fm-disp" style={{ margin: '0 0 8px', fontSize: 46, lineHeight: 1 }}>

@@ -51,7 +51,10 @@ export default function Settings() {
   ]
 
   return (
-    <div style={{ padding: '34px 40px 64px', maxWidth: 760, margin: '0 auto', animation: 'fmFade .35s ease' }}>
+    <div
+      className="fm-page-pad"
+      style={{ paddingTop: 34, paddingBottom: 64, maxWidth: 760, margin: '0 auto', animation: 'fmFade .35s ease' }}
+    >
       <h1 className="fm-disp" style={{ margin: '0 0 24px', fontSize: 44, lineHeight: 1 }}>
         Settings
       </h1>

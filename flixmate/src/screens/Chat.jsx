@@ -1,14 +1,9 @@
 import { useStore } from '../app/storeContext'
-import { Mascot, SoonTag } from '../components/primitives'
+import { Mascot } from '../components/primitives'
 import { CHAT_CHIPS, useHover } from '../app/ui'
 import ChatMessages from '../components/ChatMessages'
 
-/**
- * Full-page curator.
- *
- * Picks come from a local keyword matcher over the catalogue, not a language
- * model. The badge under the header says as much.
- */
+/** Full-page curator, backed by the real Gemini-powered assistant. */
 export default function Chat() {
   const { state } = useStore()
   const fresh = state.chatMsgs.length <= 1
@@ -30,13 +25,16 @@ export default function Chat() {
 }
 
 function ChatLanding() {
+  const { state } = useStore()
+  const firstName = state.user?.displayName?.split(' ')[0] || 'there'
+
   return (
     <div
       style={{
         position: 'relative',
         maxWidth: 760,
         margin: '0 auto',
-        minHeight: 'calc(100vh - 130px)',
+        minHeight: 'calc(100dvh - var(--fm-navbar-h, 70px))',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -62,7 +60,7 @@ function ChatLanding() {
           WebkitTextFillColor: 'transparent'
         }}
       >
-        Hi Alex, what should we watch?
+        Hi {firstName}, what should we watch?
       </h1>
       <p
         style={{
@@ -76,20 +74,6 @@ function ChatLanding() {
       >
         Tell me a vibe, an actor, or the kind of night you want. I know your taste.
       </p>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 28,
-          fontSize: 12,
-          fontWeight: 700,
-          color: 'var(--fm-muted)'
-        }}
-      >
-        Matching on keywords for now · conversational AI <SoonTag />
-      </div>
-
       <div style={{ width: '100%', maxWidth: 620 }}>
         <ChatComposer variant="landing" />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 20 }}>
@@ -112,7 +96,7 @@ function ChatThread() {
         padding: '22px 24px 40px',
         display: 'flex',
         flexDirection: 'column',
-        minHeight: 'calc(100vh - 130px)',
+        minHeight: 'calc(100dvh - var(--fm-navbar-h, 70px))',
         animation: 'fmFade .35s ease'
       }}
     >

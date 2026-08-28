@@ -164,3 +164,21 @@ textarea {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* --- responsive -----------------------------------------------------------
+   The app has one breakpoint (720px, see MOBILE_BREAKPOINT in app/ui.js).
+   Layouts needing conditional JSX use the useIsMobile() hook; layouts that
+   are pure presentation, like a page's side padding, use a class instead.
+   ------------------------------------------------------------------------ */
+
+.fm-page-pad {
+  padding-left: 40px;
+  padding-right: 40px;
+}
+
+@media (max-width: 720px) {
+  .fm-page-pad {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}

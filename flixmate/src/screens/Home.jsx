@@ -1,18 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStore } from '../app/storeContext'
-import { useMovieDetails } from '../app/useMovieDetails'
 import { usePaginatedList } from '../app/usePaginatedList'
 import { adaptMovie } from '../app/catalog'
 import * as api from '../app/tmdbApi'
-import { backdrop } from '../app/art'
 import PosterCard from '../components/PosterCard'
-import PosterImage from '../components/PosterImage'
 import RowScroller from '../components/RowScroller'
 import WizardRail from '../components/WizardRail'
 import Footer from '../components/Footer'
 import ActiveChips, { NoResults } from '../components/ActiveChips'
+import { Mascot } from '../components/primitives'
+import { ChatComposer, SuggestionChip } from './Chat'
 import { useActiveChips } from '../app/useActiveChips'
-import { RESULT_GRID, useHover } from '../app/ui'
+import { CHAT_CHIPS, RESULT_GRID, useHover, useIsMobile } from '../app/ui'
 
 /**
  * Genre rows on Home, each backed by a real TMDb discover query so "See all"
@@ -36,13 +35,22 @@ const GENRE_ROWS = [
  */
 export default function Home() {
   const { filtersActive } = useStore()
+  const isMobile = useIsMobile()
 
   return (
     <div style={{ position: 'relative' }}>
       <AmbientIcons />
       <WizardRail />
 
-      <div style={{ padding: '26px 40px 0 100px', maxWidth: 1620, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+      <div
+        style={{
+          padding: isMobile ? '18px 18px 0' : '26px 40px 0 100px',
+          maxWidth: 1620,
+          margin: '0 auto',
+          position: 'relative',
+          zIndex: 1
+        }}
+      >
         {filtersActive ? <HomeResults /> : <HomeFeatured />}
         <Footer />
       </div>
@@ -135,206 +143,82 @@ function AmbientIcons() {
 function HomeFeatured() {
   return (
     <>
-      <Hero />
+      <AskHero />
       <Rows />
     </>
   )
 }
 
-function Hero() {
-  const { state, patch, openMovie, playTrailer } = useStore()
-
-  const heroList = useMemo(() => [...state.movies].sort((a, b) => b.rating - a.rating).slice(0, 5), [state.movies])
-  const hm = heroList[state.heroIndex % heroList.length]
-  const detail = useMovieDetails(hm?.id, state.genreMap)
-
-  if (!hm) return null
+/** Replaces the old backdrop carousel: the Flixmate assistant, front and
+    centre, so finding something to watch starts with asking for it. */
+function AskHero() {
+  const { state } = useStore()
+  const firstName = state.user?.displayName?.split(' ')[0]
 
   return (
     <div
       style={{
         position: 'relative',
-        height: 462,
         borderRadius: 22,
         overflow: 'hidden',
-        boxShadow: '0 24px 70px rgba(0,0,0,.45)',
+        padding: 'clamp(40px, 7vw, 64px) 24px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        background: 'var(--fm-surface)',
+        border: '1px solid var(--fm-border)',
+        boxShadow: '0 24px 70px rgba(0,0,0,.25)',
         animation: 'fmScale .5s ease'
       }}
     >
       <div
-        key={`hb${hm.id}`}
-        style={{
-          position: 'absolute',
-          inset: '-10%',
-          background: backdrop(hm.hue),
-          animation: 'fmKen 9s ease-out both'
-        }}
-      >
-        <PosterImage src={hm.backdropUrl} objectPosition="center 22%" />
-      </div>
-      <div
+        aria-hidden
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(90deg,rgba(0,0,0,.94) 6%,rgba(0,0,0,.5) 48%,transparent 78%)'
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'linear-gradient(0deg,rgba(0,0,0,.9) 2%,transparent 44%)'
+          background: 'radial-gradient(58% 60% at 50% 0%, var(--fm-accentsoft), transparent 70%)',
+          pointerEvents: 'none'
         }}
       />
 
-      <div
+      <div style={{ position: 'relative', animation: 'fmBob 3.4s ease-in-out infinite', marginBottom: 18 }}>
+        <Mascot size={62} />
+      </div>
+
+      <h1
+        className="fm-disp"
         style={{
           position: 'relative',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'flex-end',
-          padding: '48px 52px',
-          maxWidth: 660
+          margin: '0 0 10px',
+          fontSize: 'clamp(28px, 4.4vw, 44px)',
+          lineHeight: 1.02
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 12 }}>
-          <span
-            style={{
-              fontWeight: 900,
-              fontSize: 11,
-              letterSpacing: '1.8px',
-              color: 'var(--fm-accent)',
-              textTransform: 'uppercase'
-            }}
-          >
-            Featured
-          </span>
-          <span style={{ fontSize: 12.5, color: 'rgba(255,255,255,.72)', fontWeight: 700 }}>
-            {hm.genre} · {hm.year}
-            {detail?.runtime ? ` · ${detail.runtime}` : ''}
-          </span>
+        {firstName ? `Hi ${firstName}, what` : 'What'} should we watch next?
+      </h1>
+      <p
+        style={{
+          position: 'relative',
+          margin: '0 0 26px',
+          color: 'var(--fm-muted)',
+          fontWeight: 600,
+          fontSize: 15.5,
+          maxWidth: 480
+        }}
+      >
+        Tell me a vibe, an actor, or the kind of night you want. I know your taste.
+      </p>
+
+      <div style={{ position: 'relative', width: '100%', maxWidth: 620 }}>
+        <ChatComposer variant="landing" />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 18 }}>
+          {CHAT_CHIPS.map((c) => (
+            <SuggestionChip key={c} label={c} rounded />
+          ))}
         </div>
-
-        <h1
-          className="fm-disp"
-          style={{
-            margin: '0 0 14px',
-            fontSize: 68,
-            lineHeight: 0.94,
-            color: '#fff',
-            textShadow: '0 2px 30px rgba(0,0,0,.5)'
-          }}
-        >
-          {hm.title}
-        </h1>
-        <p
-          style={{
-            margin: '0 0 24px',
-            fontSize: 16,
-            lineHeight: 1.55,
-            color: 'rgba(255,255,255,.9)',
-            maxWidth: 540,
-            fontWeight: 500
-          }}
-        >
-          {hm.synopsis}
-        </p>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <HeroPlay onClick={() => playTrailer(hm.id)} />
-          <HeroInfo onClick={() => openMovie(hm.id)} />
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              marginLeft: 4,
-              padding: '10px 15px',
-              background: 'rgba(0,0,0,.4)',
-              borderRadius: 12
-            }}
-          >
-            <span style={{ color: '#ffce54', fontSize: 15 }}>★</span>
-            <span style={{ color: '#fff', fontWeight: 900, fontSize: 15 }}>{hm.rating}</span>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ position: 'absolute', bottom: 26, right: 30, display: 'flex', gap: 8 }}>
-        {heroList.map((m, i) => (
-          <button
-            key={m.id}
-            aria-label={`Show ${m.title}`}
-            onClick={() => patch({ heroIndex: i })}
-            style={{
-              width: i === state.heroIndex ? 26 : 7,
-              height: 7,
-              borderRadius: 5,
-              border: 'none',
-              background: i === state.heroIndex ? 'var(--fm-accent)' : 'rgba(255,255,255,.4)',
-              cursor: 'pointer',
-              transition: 'all .35s',
-              padding: 0
-            }}
-          />
-        ))}
       </div>
     </div>
-  )
-}
-
-function HeroPlay({ onClick }) {
-  const [hov, bind] = useHover()
-  return (
-    <button
-      {...bind}
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 9,
-        padding: '14px 28px',
-        border: 'none',
-        borderRadius: 13,
-        background: '#fff',
-        color: '#141014',
-        fontWeight: 900,
-        fontSize: 15,
-        cursor: 'pointer',
-        transform: hov ? 'scale(1.04)' : 'none',
-        transition: 'transform .2s'
-      }}
-    >
-      <span style={{ fontSize: 12 }}>▶</span> Play trailer
-    </button>
-  )
-}
-
-function HeroInfo({ onClick }) {
-  const [hov, bind] = useHover()
-  return (
-    <button
-      {...bind}
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '14px 22px',
-        border: '1px solid rgba(255,255,255,.4)',
-        borderRadius: 13,
-        background: hov ? 'rgba(255,255,255,.24)' : 'rgba(255,255,255,.14)',
-        backdropFilter: 'blur(8px)',
-        color: '#fff',
-        fontWeight: 800,
-        fontSize: 15,
-        cursor: 'pointer',
-        transition: 'all .2s'
-      }}
-    >
-      ⓘ More info
-    </button>
   )
 }
 

@@ -7,7 +7,10 @@ export default function Watchlist() {
   const saved = state.watchlist.map(getMovie).filter(Boolean)
 
   return (
-    <div style={{ padding: '34px 40px 64px', maxWidth: 1440, margin: '0 auto', animation: 'fmFade .35s ease' }}>
+    <div
+      className="fm-page-pad"
+      style={{ paddingTop: 34, paddingBottom: 64, maxWidth: 1440, margin: '0 auto', animation: 'fmFade .35s ease' }}
+    >
       <div
         style={{
           display: 'flex',

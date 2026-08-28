@@ -4,15 +4,17 @@ import { Logo, SoonTag } from '../components/primitives'
 import { useHover } from '../app/ui'
 
 /**
- * Sign in / sign up.
- *
- * There is no auth backend, so nothing here creates or verifies an account.
- * Submitting drops you into the app as the demo profile, and the notice below
- * the form says so. Password strength is measured locally.
+ * Sign in / sign up against the real backend account system (email +
+ * password, session cookie). Password strength is measured locally.
  */
 export default function Auth() {
-  const { state, patch, nav, showSoon } = useStore()
+  const { state, patch, showSoon, signup, login } = useStore()
   const isSignup = state.authMode === 'signup'
+
+  const submit = () => {
+    if (isSignup) signup(state.authEmail, state.pw, state.authDisplayName)
+    else login(state.authEmail, state.pw)
+  }
 
   const len = state.pw.length
   const strength = len === 0 ? 0 : len < 6 ? 1 : len < 10 ? 2 : 3
@@ -64,14 +66,31 @@ export default function Auth() {
           <div style={{ flex: 1, height: 1, background: 'var(--fm-border)' }} />
         </div>
 
-        {isSignup && <Field placeholder="Display name" />}
-        <Field placeholder="Email address" type="email" />
+        {isSignup && (
+          <Field
+            placeholder="Display name"
+            value={state.authDisplayName}
+            onChange={(e) => patch({ authDisplayName: e.target.value })}
+          />
+        )}
+        <Field
+          placeholder="Email address"
+          type="email"
+          value={state.authEmail}
+          onChange={(e) => patch({ authEmail: e.target.value })}
+        />
         <Field
           placeholder="Password"
           type="password"
           value={state.pw}
           onChange={(e) => patch({ pw: e.target.value })}
         />
+
+        {state.authError && (
+          <div style={{ color: '#ff5b52', fontSize: 12.5, fontWeight: 700, marginBottom: 12 }}>
+            {state.authError}
+          </div>
+        )}
 
         {isSignup && (
           <>
@@ -138,23 +157,11 @@ export default function Auth() {
           </div>
         )}
 
-        <SubmitButton label={isSignup ? 'Create account' : 'Sign in'} onClick={() => nav('home')} />
-
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            marginBottom: 16,
-            fontSize: 12,
-            fontWeight: 700,
-            color: 'var(--fm-muted)',
-            textAlign: 'center'
-          }}
-        >
-          Real accounts &amp; sync <SoonTag /> (this continues as the demo profile)
-        </div>
+        <SubmitButton
+          label={state.authBusy ? 'One sec…' : isSignup ? 'Create account' : 'Sign in'}
+          onClick={submit}
+          disabled={state.authBusy}
+        />
 
         <div style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--fm-muted)', fontWeight: 700 }}>
           {isSignup ? 'Already have an account?' : 'New to Flixmate?'}{' '}
@@ -251,12 +258,13 @@ function GoogleButton({ onClick }) {
   )
 }
 
-function SubmitButton({ label, onClick }) {
+function SubmitButton({ label, onClick, disabled }) {
   const [hov, bind] = useHover()
   return (
     <button
       {...bind}
       onClick={onClick}
+      disabled={disabled}
       style={{
         width: '100%',
         padding: 14,
@@ -266,9 +274,10 @@ function SubmitButton({ label, onClick }) {
         color: '#fff',
         fontWeight: 900,
         fontSize: 15,
-        cursor: 'pointer',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.7 : 1,
         boxShadow: '0 6px 20px var(--fm-accentglow)',
-        transform: hov ? 'translateY(-1px)' : 'none',
+        transform: hov && !disabled ? 'translateY(-1px)' : 'none',
         transition: 'transform .2s',
         marginBottom: 14
       }}

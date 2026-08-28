@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react'
 import { useStore } from '../app/storeContext'
 import { grad } from '../app/art'
-import { useHover } from '../app/ui'
+import { CHAT_WAIT_PHRASES, useHover } from '../app/ui'
 
 /** Message list shared by the floating chat widget and the full-page screen. */
 export default function ChatMessages({ compact }) {
@@ -43,32 +44,50 @@ export default function ChatMessages({ compact }) {
         </div>
       ))}
 
-      {state.chatTyping && (
-        <div
-          style={{
-            display: 'flex',
-            gap: compact ? 4 : 5,
-            padding: compact ? '12px 14px' : '14px 16px',
-            background: 'var(--fm-input)',
-            borderRadius: compact ? 14 : 16,
-            width: 'fit-content'
-          }}
-        >
-          {[0, 0.2, 0.4].map((delay) => (
-            <span
-              key={delay}
-              style={{
-                width: compact ? 7 : 8,
-                height: compact ? 7 : 8,
-                borderRadius: '50%',
-                background: 'var(--fm-muted)',
-                animation: `fmDots 1.2s ${delay}s infinite`
-              }}
-            />
-          ))}
-        </div>
-      )}
+      {/* Keyed by message count so each new wait remounts and restarts at phrase 0. */}
+      {state.chatTyping && <WaitIndicator key={state.chatMsgs.length} compact={compact} />}
     </>
+  )
+}
+
+/** Typing bubble with copy that cycles every few seconds, replies can take a while. */
+function WaitIndicator({ compact }) {
+  const [index, setIndex] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setIndex((i) => (i + 1) % CHAT_WAIT_PHRASES.length), 4000)
+    return () => clearInterval(t)
+  }, [])
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: compact ? 8 : 10,
+        padding: compact ? '12px 14px' : '14px 16px',
+        background: 'var(--fm-input)',
+        borderRadius: compact ? 14 : 16,
+        width: 'fit-content'
+      }}
+    >
+      <span style={{ fontSize: compact ? 12 : 13, fontWeight: 700, color: 'var(--fm-muted)' }}>
+        {CHAT_WAIT_PHRASES[index]}
+      </span>
+      <div style={{ display: 'flex', gap: compact ? 4 : 5 }}>
+        {[0, 0.2, 0.4].map((delay) => (
+          <span
+            key={delay}
+            style={{
+              width: compact ? 7 : 8,
+              height: compact ? 7 : 8,
+              borderRadius: '50%',
+              background: 'var(--fm-muted)',
+              animation: `fmDots 1.2s ${delay}s infinite`
+            }}
+          />
+        ))}
+      </div>
+    </div>
   )
 }
 

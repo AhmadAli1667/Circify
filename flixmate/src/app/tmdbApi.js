@@ -1,9 +1,11 @@
 /**
- * Thin client for the flixmate/backend TMDb proxy (localhost:3001). One
- * function per backend route. No adaptation here, that's catalog.js's job.
+ * Thin client for the flixmate/backend TMDb proxy. One function per backend
+ * route. No adaptation here, that's catalog.js's job.
  */
 
-const API_BASE = 'http://localhost:3001/api'
+import { supabase } from './supabaseClient'
+
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'
 
 async function get(path, params) {
   const url = new URL(`${API_BASE}${path}`)
@@ -34,3 +36,35 @@ export const getMovieRecommendations = (id) => get(`/movies/${id}/recommendation
 
 export const getPerson = (id) => get(`/people/${id}`)
 export const getPersonCredits = (id) => get(`/people/${id}/credits`)
+
+export const getMovieKeywords = (id) => get(`/movies/${id}/keywords`)
+export const getMovieReviews = (id, page = 1) => get(`/movies/${id}/reviews`, { page })
+
+// --- account-scoped calls: bearer token required ----------------------------
+
+async function authed(method, path, body) {
+  const {
+    data: { session }
+  } = await supabase.auth.getSession()
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: {
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(session ? { Authorization: `Bearer ${session.access_token}` } : {})
+    },
+    body: body ? JSON.stringify(body) : undefined
+  })
+  if (!res.ok) throw new Error(`${path} failed: ${res.status}`)
+  return res.status === 204 ? null : res.json()
+}
+
+export const getWatchlist = () => authed('GET', '/watchlist')
+export const addToWatchlist = (movieId) => authed('POST', `/watchlist/${movieId}`)
+export const removeFromWatchlist = (movieId) => authed('DELETE', `/watchlist/${movieId}`)
+
+export const getRatings = () => authed('GET', '/ratings')
+export const setRatingRemote = (movieId, value) => authed('PUT', `/ratings/${movieId}`, { value })
+
+export const getChatHistory = () => authed('GET', '/chat/history')
+export const sendChatMessage = (message) => authed('POST', '/chat', { message })

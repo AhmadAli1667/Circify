@@ -45,7 +45,10 @@ export default function CastCrew() {
   }
 
   return (
-    <div style={{ padding: '34px 40px 64px', maxWidth: 1180, margin: '0 auto', animation: 'fmFade .35s ease' }}>
+    <div
+      className="fm-page-pad"
+      style={{ paddingTop: 34, paddingBottom: 64, maxWidth: 1180, margin: '0 auto', animation: 'fmFade .35s ease' }}
+    >
       <BackBtn onClick={() => nav('home')} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 36 }}>

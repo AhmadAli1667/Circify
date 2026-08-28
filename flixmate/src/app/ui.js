@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 /**
  * Non-component UI helpers and shared constants.
@@ -11,6 +11,22 @@ import { useState } from 'react'
 export function useHover() {
   const [on, setOn] = useState(false)
   return [on, { onMouseEnter: () => setOn(true), onMouseLeave: () => setOn(false) }]
+}
+
+/** The one breakpoint the app designs around: below this, layouts switch to a mobile pattern. */
+export const MOBILE_BREAKPOINT = 720
+
+/** True below MOBILE_BREAKPOINT, live-updates on resize/orientation change. */
+export function useIsMobile() {
+  const query = `(max-width: ${MOBILE_BREAKPOINT}px)`
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia(query).matches)
+  useEffect(() => {
+    const mql = window.matchMedia(query)
+    const onChange = (e) => setIsMobile(e.matches)
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [query])
+  return isMobile
 }
 
 /** Active/inactive chip colours used by every filter control. */
@@ -40,17 +56,50 @@ export const MOOD_MAP = {
 /** Starter prompts offered by both the chat widget and the full chat screen. */
 export const CHAT_CHIPS = ['Rainy-night slow burn', 'Feel-good comedy', 'Mind-bending sci-fi']
 
+/** Cycled while waiting on a reply, the model can take a while to finish its tool calls. */
+export const CHAT_WAIT_PHRASES = [
+  'Thinking…',
+  'Checking your taste…',
+  'Searching movies…',
+  'Weighing a few options…',
+  'Almost there…'
+]
+
 /** Human labels for the decade filter keys. */
 export const DECADE_LABEL = { 2020: "'20s", 2010: "'10s", 2000: "'00s", class: 'Classics' }
 
 /**
- * Illustrative community reviews, shared by ForYou's Comments tab and the
- * movie modal's Reviews tab. No review feed exists in the catalogue, this is
- * sample content, honestly labeled wherever it appears.
+ * Illustrative community reviews for the movie modal's Reviews tab. Sample
+ * content, honestly labeled where it appears. For You no longer draws on it,
+ * that panel reads TMDb's real reviews (see useMovieReviews.js).
  */
-export const REVIEW_POOL = [
-  ['Maya R.', 18, '★★★★★', 'Stuck with me for days, the final act is a gut-punch. Instant favourite.'],
-  ['Devon C.', 280, '★★★★', 'Gorgeous and quietly devastating. Worth every minute.'],
-  ['Priya N.', 150, '★★★★★', 'Exactly my kind of film, the performances are unreal.'],
-  ['Theo B.', 95, '★★★', 'Solid if a little familiar, but I still had a great time.']
+/** 546 → "546", 9340 → "9.3K", 196000 → "196K", 2400000 → "2.4M". */
+export function compactCount(n) {
+  const value = Number(n) || 0
+  if (value < 1000) return String(value)
+  const [scaled, suffix] = value < 1e6 ? [value / 1e3, 'K'] : [value / 1e6, 'M']
+  return `${scaled < 10 ? scaled.toFixed(1).replace(/\.0$/, '') : Math.round(scaled)}${suffix}`
+}
+
+const AGO_UNITS = [
+  ['year', 31536000],
+  ['month', 2592000],
+  ['week', 604800],
+  ['day', 86400],
+  ['hour', 3600],
+  ['minute', 60]
 ]
+
+/** ISO timestamp → "1 year ago", the relative stamp a comment feed reads with. */
+export function timeAgo(iso) {
+  const then = Date.parse(iso)
+  if (Number.isNaN(then)) return ''
+  const seconds = Math.max(1, (Date.now() - then) / 1000)
+  for (const [unit, size] of AGO_UNITS) {
+    if (seconds >= size) {
+      const n = Math.floor(seconds / size)
+      return `${n} ${unit}${n > 1 ? 's' : ''} ago`
+    }
+  }
+  return 'just now'
+}

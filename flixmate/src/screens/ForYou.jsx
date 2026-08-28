@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../app/storeContext'
 import { useMovieDetails } from '../app/useMovieDetails'
+import { useMovieReviews } from '../app/useMovieReviews'
 import { usePaginatedList } from '../app/usePaginatedList'
 import { adaptMovie } from '../app/catalog'
 import * as api from '../app/tmdbApi'
-import { backdrop, grad } from '../app/art'
+import { backdrop, grad, initialsOf } from '../app/art'
+import LinkedReviewText from '../components/LinkedReviewText'
 import PosterImage from '../components/PosterImage'
-import { BackButton } from '../components/primitives'
-import { REVIEW_POOL, useHover } from '../app/ui'
+import { compactCount, timeAgo, useHover, useIsMobile } from '../app/ui'
 
 const REASONS = [
   'Because you rated it five stars',
@@ -20,15 +21,45 @@ const REASONS = [
   'Critics and you agree'
 ]
 
+/* --- shape language ---------------------------------------------------------
+   This page is deliberately square-cut: 4px on surfaces, 2px on controls, and
+   circles only where a short-form feed actually uses them, the action rail's
+   glyph buttons and the avatars. No pills, no soft blobs.
+   -------------------------------------------------------------------------- */
+const R = 4
+const R_SM = 2
+
+const RAIL_W = 74
+const PANEL_W = 520
+const GAP = 16
+/** Sliver of the next card left showing under the current one. */
+const PEEK = 34
+
+const SURFACE = '#151517'
+const PAGE = '#0b0b0d'
+const HAIR = 'rgba(255,255,255,.09)'
+const STAR = '#ffc53d'
+
 /**
- * For You: a full-height vertical snap feed, one pick per screen. Backed by
- * TMDb's popular list (paginated, genuinely doesn't run out), re-sorted so
- * whatever matches the user's rated taste surfaces first.
+ * For You: a two-column short-form feed. Left is one pick per screen (poster
+ * or auto-playing trailer) with its action rail beside it; right is the
+ * reviews panel, which stays open and re-fills itself as the feed scrolls,
+ * the way a comments pane does on a shorts player.
+ *
+ * The reviews are TMDb's real community reviews for whichever title is on
+ * screen (author, avatar, score out of 10, body, timestamp), read as comments
+ * with the star rating sitting inline with the name.
+ *
+ * Always painted on a near-black surface regardless of the app's light/dark
+ * theme: an immersive viewer reads as its own thing, not as themed page
+ * chrome.
  */
 export default function ForYou() {
   const { state, nav, cacheMovies } = useStore()
+  const isMobile = useIsMobile()
   const feedEl = useRef(null)
   const [activeId, setActiveId] = useState(null)
+  const [panelPref, setPanelPref] = useState(false)
 
   const fetchPage = useCallback((page) => api.getPopular(page), [])
   const adapt = useCallback((m) => adaptMovie(m, state.genreMap), [state.genreMap])
@@ -51,6 +82,10 @@ export default function ForYou() {
   }, [rawFeed, state.movies, state.ratings])
 
   const effectiveActiveId = activeId ?? feed[0]?.id ?? null
+  const activeMovie = feed.find((m) => m.id === effectiveActiveId) || null
+  const activeIndex = feed.findIndex((m) => m.id === effectiveActiveId)
+  const panelOpen = panelPref
+  const peek = isMobile ? 0 : PEEK
 
   // Auto-play follows scroll position: whichever card is mostly in view becomes active.
   useEffect(() => {
@@ -74,80 +109,990 @@ export default function ForYou() {
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - el.clientHeight) loadMore()
   }
 
-  const scroll = (dir) => {
-    if (feedEl.current) {
-      feedEl.current.scrollBy({ top: dir * feedEl.current.clientHeight, behavior: 'smooth' })
+  const scroll = useCallback(
+    (dir) => {
+      const target = feed[activeIndex + dir]
+      if (!target) return
+      feedEl.current
+        ?.querySelector(`[data-movie-id="${target.id}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    },
+    [feed, activeIndex]
+  )
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.target instanceof HTMLElement && ['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return
+      if (e.key === 'ArrowUp') scroll(-1)
+      else if (e.key === 'ArrowDown') scroll(1)
     }
-  }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [scroll])
+
+  const columnWidth = isMobile
+    ? '100vw'
+    : `min(430px, calc((100dvh - var(--fm-navbar-h, 70px) - ${GAP * 2}px) * 0.5625), ` +
+      `calc(100vw - ${RAIL_W + (panelOpen ? PANEL_W : 0) + 130}px))`
 
   return (
-    <div style={{ position: 'relative', animation: 'fmFade .35s ease' }}>
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '20px 20px 4px', textAlign: 'center', position: 'relative' }}>
-        <BackButton onClick={() => nav('home')} style={{ position: 'absolute', left: 20, top: 20 }} />
+    <div
+      style={{
+        position: 'relative',
+        background: PAGE,
+        height: isMobile ? '100dvh' : 'calc(100dvh - var(--fm-navbar-h, 70px))',
+        overflow: 'hidden',
+        animation: 'fmFade .35s ease'
+      }}
+    >
+      <div
+        style={{
+          height: '100%',
+          display: 'flex',
+          alignItems: 'stretch',
+          justifyContent: 'center',
+          gap: 26,
+          padding: isMobile ? 0 : `${GAP}px 0`
+        }}
+      >
+        <div style={{ position: 'relative', display: 'flex', gap: 10, height: '100%' }}>
+          <div
+            ref={feedEl}
+            onScroll={onScroll}
+            className="fm-noscrollbar"
+            style={{
+              width: columnWidth,
+              height: '100%',
+              overflowY: 'auto',
+              scrollSnapType: 'y mandatory',
+              overscrollBehavior: 'contain'
+            }}
+          >
+            {feed.map((m, i) => (
+              <FeedItem
+                key={m.id}
+                movie={m}
+                reason={REASONS[i % REASONS.length]}
+                isActive={m.id === effectiveActiveId}
+                isMobile={isMobile}
+                genreMap={state.genreMap}
+                peek={peek}
+                progress={feed.length ? (i + 1) / feed.length : 0}
+              />
+            ))}
+          </div>
+
+          {/* One rail, owned by whichever card is on screen. Outside the frame
+              on desktop like the reference feed, overlaid on it at phone width
+              where there's no room beside the video. */}
+          {activeMovie && (
+            <div
+              style={
+                isMobile
+                  ? { position: 'absolute', right: 10, bottom: 104, zIndex: 6 }
+                  : { width: RAIL_W, display: 'flex', alignItems: 'flex-end', paddingBottom: peek + 12 }
+              }
+            >
+              <ActionRail movie={activeMovie} panelOpen={panelOpen} onComments={() => setPanelPref(!panelOpen)} />
+            </div>
+          )}
+        </div>
+
+        {panelOpen && activeMovie && (
+          <ReviewsPanel movie={activeMovie} isMobile={isMobile} onClose={() => setPanelPref(false)} />
+        )}
+      </div>
+
+      {!isMobile && (
         <div
           style={{
-            fontWeight: 900,
-            fontSize: 12,
-            letterSpacing: '1.6px',
-            textTransform: 'uppercase',
-            color: 'var(--fm-accent)',
-            marginBottom: 6
+            position: 'fixed',
+            right: 20,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            zIndex: 8
           }}
         >
-          Tailored to you
+          <PagerButton label="Previous pick" onClick={() => scroll(-1)} icon={<ChevronUpIcon />} />
+          <PagerButton label="Next pick" onClick={() => scroll(1)} icon={<ChevronDownIcon />} />
         </div>
-        <h1 className="fm-disp" style={{ margin: '0 0 8px', fontSize: 36, lineHeight: 1 }}>
-          For You, Alex
-        </h1>
-        <p style={{ margin: 0, color: 'var(--fm-muted)', fontWeight: 600, fontSize: 13.5 }}>
-          Scroll like Shorts: one pick at a time, tuned to your taste.
-        </p>
-      </div>
+      )}
 
+      <SquareButton
+        label="Back"
+        onClick={() => nav('home')}
+        icon={<BackArrowIcon />}
+        style={{ position: 'absolute', top: isMobile ? 12 : 18, left: isMobile ? 12 : 18, zIndex: 9 }}
+      />
+    </div>
+  )
+}
+
+/* --- the card ------------------------------------------------------------ */
+
+function FeedItem({ movie, reason, isActive, isMobile, genreMap, peek, progress }) {
+  const { state, patch, openMovie } = useStore()
+  const [muted, setMuted] = useState(true)
+  const [paused, setPaused] = useState(false)
+  const [pausedForKey, setPausedForKey] = useState(null)
+  const videoRef = useRef(null)
+
+  const tab = state.feedTab[movie.id] ?? (isActive ? 'trailer' : 'poster')
+  const detail = useMovieDetails(tab === 'trailer' ? movie.id : null, genreMap)
+  const setTab = (t) => patch((s) => ({ feedTab: { ...s.feedTab, [movie.id]: t } }))
+
+  if (detail?.trailerKey && detail.trailerKey !== pausedForKey) {
+    setPausedForKey(detail.trailerKey)
+    if (paused) setPaused(false)
+  }
+
+  const postCommand = (func) => {
+    videoRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args: [] }), '*')
+  }
+
+  useEffect(() => {
+    if (tab === 'trailer' && detail?.trailerKey) postCommand(muted ? 'mute' : 'unMute')
+  }, [muted, tab, detail?.trailerKey])
+
+  const togglePlay = () => {
+    postCommand(paused ? 'playVideo' : 'pauseVideo')
+    setPaused((p) => !p)
+  }
+
+  const art = movie.backdropUrl || movie.posterUrl
+
+  return (
+    <div
+      data-movie-id={movie.id}
+      style={{
+        height: `calc(100% - ${peek}px)`,
+        marginBottom: peek ? 8 : 0,
+        scrollSnapAlign: 'start',
+        scrollSnapStop: 'always'
+      }}
+    >
       <div
-        ref={feedEl}
-        onScroll={onScroll}
-        className="fm-scroll"
         style={{
-          height: 'calc(100vh - 175px)',
-          maxWidth: 400,
-          margin: '8px auto 0',
-          overflowY: 'auto',
-          scrollSnapType: 'y mandatory',
-          borderRadius: 26,
-          boxShadow: '0 20px 60px rgba(0,0,0,.4)'
+          position: 'relative',
+          height: '100%',
+          width: '100%',
+          overflow: 'hidden',
+          borderRadius: isMobile ? 0 : R,
+          border: isMobile ? 'none' : `1px solid ${HAIR}`,
+          background: backdrop(movie.hue)
         }}
       >
-        {feed.map((m, i) => (
-          <FeedItem
-            key={m.id}
-            movie={m}
-            reason={REASONS[i % REASONS.length]}
-            isActive={m.id === effectiveActiveId}
-            genreMap={state.genreMap}
+        {/* Blurred art fills the 9:16 frame behind letterboxed 16:9 trailers,
+            the way a vertical player pads out landscape footage. Kept bright
+            enough to read as the title's own colour, not as dead black. */}
+        {art && (
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: -30,
+              background: `center/cover no-repeat url(${art})`,
+              filter: 'blur(26px) brightness(.62) saturate(1.15)'
+            }}
           />
-        ))}
-      </div>
+        )}
 
-      <div
-        style={{
-          position: 'fixed',
-          right: 'calc(50% - 244px)',
-          bottom: 'calc(50vh - 40px)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
-          zIndex: 20
-        }}
-      >
-        <FeedNav label="Previous" glyph="▲" onClick={() => scroll(-1)} />
-        <FeedNav label="Next" glyph="▼" onClick={() => scroll(1)} />
+        {tab === 'poster' && <PosterImage src={movie.posterUrl} alt={`${movie.title} poster`} />}
+
+        {tab === 'trailer' &&
+          (detail?.trailerKey ? (
+            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
+              <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9' }}>
+                {/* pointer-events off on purpose: it keeps YouTube's own hover
+                    chrome out of the frame and lets a wheel/swipe over the
+                    video scroll the feed instead of being eaten by the embed.
+                    Sound is the card's own control. */}
+                <iframe
+                  ref={videoRef}
+                  title={`${movie.title} trailer`}
+                  src={`https://www.youtube.com/embed/${detail.trailerKey}?autoplay=1&mute=1&loop=1&playlist=${detail.trailerKey}&controls=0&modestbranding=1&rel=0&playsinline=1&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1`}
+                  allow="autoplay; encrypted-media"
+                  onLoad={() => {
+                    postCommand(muted ? 'mute' : 'unMute')
+                    if (paused) postCommand('pauseVideo')
+                  }}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                    pointerEvents: 'none'
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'grid',
+                placeItems: 'center',
+                padding: 28,
+                textAlign: 'center'
+              }}
+            >
+              <div>
+                <div style={{ display: 'grid', placeItems: 'center', color: '#fff', opacity: 0.85, marginBottom: 12 }}>
+                  <PlayIcon size={34} />
+                </div>
+                {!detail ? (
+                  <div style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>Loading trailer…</div>
+                ) : (
+                  <>
+                    <div style={{ color: '#fff', fontWeight: 800, fontSize: 14, marginBottom: 14 }}>
+                      No trailer on file for this one
+                    </div>
+                    <a
+                      href={movie.trailerLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        display: 'inline-block',
+                        padding: '9px 16px',
+                        borderRadius: R_SM,
+                        background: 'rgba(255,255,255,.12)',
+                        border: `1px solid ${HAIR}`,
+                        color: '#fff',
+                        fontWeight: 800,
+                        fontSize: 12.5
+                      }}
+                    >
+                      Search YouTube ↗
+                    </a>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(0deg,rgba(0,0,0,.95) 4%,rgba(0,0,0,.06) 46%,rgba(0,0,0,.34))',
+            pointerEvents: 'none'
+          }}
+        />
+
+        <div
+          style={{
+            position: 'absolute',
+            top: 12,
+            left: isMobile ? 58 : 12,
+            right: 12,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'flex-end',
+            gap: 8
+          }}
+        >
+          <div style={{ position: 'absolute', left: '50%', top: 4, transform: 'translateX(-50%)' }}>
+            <WorldTabs tab={tab} onChange={setTab} />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flex: 'none' }}>
+            <SquareButton label="Movie info" onClick={() => openMovie(movie.id)} icon={<InfoIcon />} />
+            {tab === 'trailer' && detail?.trailerKey && (
+              <>
+                <SquareButton
+                  label={paused ? 'Play trailer' : 'Pause trailer'}
+                  onClick={togglePlay}
+                  icon={paused ? <PlayIcon size={13} /> : <PauseIcon />}
+                />
+                <SquareButton
+                  label={muted ? 'Unmute trailer' : 'Mute trailer'}
+                  onClick={() => setMuted((m) => !m)}
+                  icon={muted ? <MutedIcon /> : <SoundIcon />}
+                />
+              </>
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: isMobile ? 68 : 0,
+            padding: '18px 16px 20px'
+          }}
+        >
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              marginBottom: 10,
+              padding: '6px 10px',
+              borderRadius: R_SM,
+              background: 'rgba(8,8,10,.7)',
+              border: `1px solid ${HAIR}`,
+              backdropFilter: 'blur(8px)'
+            }}
+          >
+            <span style={{ width: 5, height: 5, flex: 'none', background: 'var(--fm-accent)' }} />
+            <span style={{ color: '#fff', fontWeight: 800, fontSize: 10.5 }}>{reason}</span>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 8,
+              color: 'rgba(255,255,255,.8)',
+              fontWeight: 700,
+              fontSize: 11.5,
+              flexWrap: 'wrap'
+            }}
+          >
+            <span style={{ color: STAR }}>★ {movie.rating}</span>
+            <span>· {movie.year}</span>
+            <span>· {movie.genre}</span>
+            <span>· {compactCount(movie.voteCount)} TMDb votes</span>
+          </div>
+
+          <div
+            className="fm-disp"
+            onClick={() => openMovie(movie.id)}
+            style={{
+              fontSize: 31,
+              lineHeight: 0.98,
+              color: '#fff',
+              cursor: 'pointer',
+              marginBottom: 8,
+              textShadow: '0 2px 18px rgba(0,0,0,.6)'
+            }}
+          >
+            {movie.title}
+          </div>
+
+          <p
+            className="fm-clamp-2"
+            style={{
+              margin: '0 0 14px',
+              color: 'rgba(255,255,255,.84)',
+              fontWeight: 500,
+              fontSize: 12,
+              lineHeight: 1.45
+            }}
+          >
+            {movie.synopsis}
+          </p>
+        </div>
+
+        {/* Position in the loaded feed, not playback time, this is the same
+            place a shorts player puts its scrubber. */}
+        <div
+          style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, background: 'rgba(255,255,255,.16)' }}
+        >
+          <div style={{ width: `${Math.min(100, progress * 100)}%`, height: '100%', background: 'var(--fm-accent)' }} />
+        </div>
       </div>
     </div>
   )
 }
 
-function FeedNav({ label, glyph, onClick }) {
+/* --- action rail --------------------------------------------------------- */
+
+function ActionRail({ movie, panelOpen, onComments }) {
+  const { state, patch, toggleWatch, openMovie } = useStore()
+  const { total } = useMovieReviews(movie.id)
+
+  const liked = Boolean(state.feedLiked[movie.id])
+  const saved = state.watchlist.includes(movie.id)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+      <RailButton
+        label={compactCount(movie.voteCount + (liked ? 1 : 0))}
+        ariaLabel="Like"
+        active={liked}
+        icon={<HeartIcon filled={liked} />}
+        onClick={() => patch((s) => ({ feedLiked: { ...s.feedLiked, [movie.id]: !s.feedLiked[movie.id] } }))}
+      />
+      <RailButton
+        label={compactCount(total)}
+        ariaLabel="Reviews"
+        active={panelOpen}
+        icon={<CommentIcon />}
+        onClick={onComments}
+      />
+      <RailButton label="Share" icon={<ShareIcon />} onClick={() => patch({ shareOpen: true })} />
+      <RailButton
+        label={saved ? 'Saved' : 'Save'}
+        active={saved}
+        icon={saved ? <CheckIcon /> : <PlusIcon />}
+        onClick={() => toggleWatch(movie.id)}
+      />
+      <button
+        onClick={() => openMovie(movie.id)}
+        aria-label={`Open ${movie.title}`}
+        style={{
+          position: 'relative',
+          width: 46,
+          height: 46,
+          padding: 0,
+          overflow: 'hidden',
+          borderRadius: R_SM,
+          border: '1px solid rgba(255,255,255,.45)',
+          background: grad(movie.hue),
+          cursor: 'pointer'
+        }}
+      >
+        <PosterImage src={movie.posterUrl} alt="" />
+      </button>
+    </div>
+  )
+}
+
+function RailButton({ icon, label, ariaLabel, active, onClick }) {
+  const [hov, bind] = useHover()
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+      <button
+        {...bind}
+        onClick={onClick}
+        aria-label={ariaLabel || label}
+        style={{
+          width: 46,
+          height: 46,
+          display: 'grid',
+          placeItems: 'center',
+          borderRadius: '50%',
+          border: 'none',
+          background: hov ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.12)',
+          backdropFilter: 'blur(6px)',
+          color: active ? 'var(--fm-accent)' : '#fff',
+          cursor: 'pointer',
+          transition: 'background .15s, color .15s'
+        }}
+      >
+        {icon}
+      </button>
+      <span style={{ color: '#fff', fontSize: 11.5, fontWeight: 700, textShadow: '0 1px 6px rgba(0,0,0,.6)' }}>
+        {label}
+      </span>
+    </div>
+  )
+}
+
+/* --- reviews panel ------------------------------------------------------- */
+
+/**
+ * Reviews read as a comment thread: avatar, handle, the score inline with the
+ * name, body, timestamp. These are TMDb's real reviews for the title on
+ * screen, so the big titles carry a few and smaller ones honestly carry none.
+ *
+ * Desktop keeps the panel beside the card (the trailer keeps playing next to
+ * it); phone width gets a bottom sheet, which is what a shorts player does
+ * there.
+ */
+function ReviewsPanel({ movie, isMobile, onClose }) {
+  const { state, setRating, showSoon, openActor } = useStore()
+  const { reviews, total, loading } = useMovieReviews(movie.id)
+  const detail = useMovieDetails(movie.id, state.genreMap)
+  const cast = detail?.cast || []
+  const [sort, setSort] = useState('top')
+  const [draft, setDraft] = useState('')
+
+  const sorted = useMemo(() => {
+    const list = [...reviews]
+    if (sort === 'new') return list.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    return list.sort((a, b) => (b.rating10 ?? -1) - (a.rating10 ?? -1))
+  }, [reviews, sort])
+
+  const frame = isMobile
+    ? {
+        position: 'fixed',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: '72dvh',
+        zIndex: 60,
+        borderTop: `1px solid ${HAIR}`,
+        borderRadius: `${R}px ${R}px 0 0`,
+        animation: 'fmPop .2s ease'
+      }
+    : {
+        width: `clamp(320px, 38vw, ${PANEL_W}px)`,
+        height: '100%',
+        border: `1px solid ${HAIR}`,
+        borderRadius: R,
+        animation: 'fmSlide .2s ease'
+      }
+
+  const post = () => {
+    if (!draft.trim()) return
+    setDraft('')
+    showSoon('Written reviews')
+  }
+
+  return (
+    <>
+      {isMobile && (
+        <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 55, background: 'rgba(0,0,0,.5)' }} />
+      )}
+      <section
+        style={{
+          ...frame,
+          background: SURFACE,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}
+      >
+        <header
+          style={{
+            flex: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            padding: '15px 16px',
+            borderBottom: `1px solid ${HAIR}`
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, minWidth: 0 }}>
+            <span style={{ color: '#fff', fontWeight: 900, fontSize: 17 }}>Reviews</span>
+            <span style={{ color: 'rgba(255,255,255,.55)', fontWeight: 700, fontSize: 13.5 }}>
+              {compactCount(total)}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }}>
+            <FlatButton subtle onClick={() => setSort((s) => (s === 'top' ? 'new' : 'top'))}>
+              <SortIcon />
+              <span style={{ marginLeft: 7 }}>{sort === 'top' ? 'Top rated' : 'Newest'}</span>
+            </FlatButton>
+            <SquareButton label="Close reviews" onClick={onClose} icon={<CloseIcon />} />
+          </div>
+        </header>
+
+        <div style={{ flex: 'none', padding: '10px 16px', borderBottom: `1px solid ${HAIR}` }}>
+          <div className="fm-clamp-2" style={{ color: 'rgba(255,255,255,.62)', fontSize: 11.5, fontWeight: 700 }}>
+            {movie.title} · {movie.year}
+          </div>
+        </div>
+
+        <div className="fm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 16px 10px' }}>
+          {loading && [0, 1, 2].map((i) => <ReviewSkeleton key={i} />)}
+
+          {!loading && !sorted.length && (
+            <div style={{ padding: '34px 4px', textAlign: 'center' }}>
+              <div style={{ color: '#fff', fontWeight: 800, fontSize: 14, marginBottom: 6 }}>No reviews yet</div>
+              <div style={{ color: 'rgba(255,255,255,.55)', fontSize: 12.5, fontWeight: 600, lineHeight: 1.5 }}>
+                Nobody has written one for {movie.title} on TMDb. Your star rating below still counts.
+              </div>
+            </div>
+          )}
+
+          {!loading &&
+            sorted.map((review) => <ReviewRow key={review.id} review={review} cast={cast} onOpenActor={openActor} />)}
+        </div>
+
+        <footer
+          style={{
+            flex: 'none',
+            padding: `12px 16px calc(14px + ${isMobile ? 'env(safe-area-inset-bottom, 0px)' : '0px'})`,
+            borderTop: `1px solid ${HAIR}`
+          }}
+        >
+          <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
+            <Avatar
+              src={state.avatar}
+              seed={state.user?.displayName || 'You'}
+              text={initialsOf(state.user?.displayName || 'You')}
+              size={34}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <RatingPicker value={state.ratings[movie.id] || 0} onPick={(v) => setRating(movie.id, v)} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 9 }}>
+                <input
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && post()}
+                  placeholder="Add a review…"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '7px 2px',
+                    border: 'none',
+                    borderBottom: '1px solid rgba(255,255,255,.28)',
+                    background: 'transparent',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    outline: 'none'
+                  }}
+                />
+                {draft.trim() && <FlatButton onClick={post}>Post</FlatButton>}
+              </div>
+              <div style={{ marginTop: 8, color: 'rgba(255,255,255,.4)', fontSize: 10.5, fontWeight: 700 }}>
+                Stars save to your profile · written reviews aren&apos;t wired up yet
+              </div>
+            </div>
+          </div>
+        </footer>
+      </section>
+    </>
+  )
+}
+
+function ReviewRow({ review, cast, onOpenActor }) {
+  const { showSoon } = useStore()
+  const [expanded, setExpanded] = useState(false)
+  const [liked, setLiked] = useState(false)
+  const [disliked, setDisliked] = useState(false)
+  const long = review.text.length > 230
+
+  return (
+    <article style={{ display: 'flex', gap: 12, padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+      <Avatar src={review.avatarUrl} seed={review.hue} text={review.initial} size={36} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
+          <span style={{ color: '#fff', fontWeight: 800, fontSize: 12.5 }}>{review.handle}</span>
+          {review.stars !== null && (
+            <>
+              <Stars value={review.stars} />
+              <span style={{ color: 'rgba(255,255,255,.5)', fontSize: 11, fontWeight: 700 }}>{review.rating10}/10</span>
+            </>
+          )}
+          <span style={{ color: 'rgba(255,255,255,.45)', fontSize: 11.5, fontWeight: 600 }}>
+            {timeAgo(review.createdAt)}
+          </span>
+        </div>
+
+        <div
+          style={{
+            color: 'rgba(255,255,255,.88)',
+            fontSize: 13,
+            fontWeight: 500,
+            lineHeight: 1.5,
+            whiteSpace: 'pre-wrap',
+            overflowWrap: 'anywhere',
+            ...(expanded
+              ? {}
+              : { display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' })
+          }}
+        >
+          <LinkedReviewText text={review.text} cast={cast} onOpenActor={onOpenActor} />
+        </div>
+
+        {long && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            style={{
+              marginTop: 5,
+              padding: 0,
+              border: 'none',
+              background: 'transparent',
+              color: 'rgba(255,255,255,.6)',
+              fontSize: 11.5,
+              fontWeight: 800,
+              cursor: 'pointer'
+            }}
+          >
+            {expanded ? 'Show less' : 'Read more'}
+          </button>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 9 }}>
+          <RowAction
+            label="Helpful"
+            active={liked}
+            icon={<ThumbUpIcon />}
+            onClick={() => {
+              setLiked((v) => !v)
+              setDisliked(false)
+            }}
+          />
+          <RowAction
+            label="Not helpful"
+            hideLabel
+            active={disliked}
+            icon={<ThumbDownIcon />}
+            onClick={() => {
+              setDisliked((v) => !v)
+              setLiked(false)
+            }}
+          />
+          <RowAction label="Reply" onClick={() => showSoon('Review replies')} />
+          {review.url && (
+            <a
+              href={review.url}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: 'rgba(255,255,255,.45)', fontSize: 11.5, fontWeight: 800 }}
+            >
+              TMDb ↗
+            </a>
+          )}
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function ReviewSkeleton() {
+  return (
+    <div style={{ display: 'flex', gap: 12, padding: '14px 0' }}>
+      <div style={{ width: 36, height: 36, flex: 'none', borderRadius: '50%', background: 'rgba(255,255,255,.07)' }} />
+      <div style={{ flex: 1 }}>
+        {[52, 100, 100, 74].map((w, i) => (
+          <div
+            key={w}
+            style={{
+              height: i ? 9 : 11,
+              width: `${w}%`,
+              marginBottom: 8,
+              borderRadius: R_SM,
+              background: 'rgba(255,255,255,.07)'
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function RowAction({ icon, label, active, hideLabel, onClick }) {
+  const [hov, bind] = useHover()
+  return (
+    <button
+      {...bind}
+      onClick={onClick}
+      aria-label={label}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: 0,
+        border: 'none',
+        background: 'transparent',
+        color: active ? 'var(--fm-accent)' : `rgba(255,255,255,${hov ? '.9' : '.55'})`,
+        fontSize: 11.5,
+        fontWeight: 800,
+        cursor: 'pointer',
+        transition: 'color .15s'
+      }}
+    >
+      {icon}
+      {!hideLabel && <span>{label}</span>}
+    </button>
+  )
+}
+
+/** Five glyphs with the score painted over them, so half-stars land exactly. */
+function Stars({ value, size = 11 }) {
+  const pct = Math.max(0, Math.min(1, value / 5)) * 100
+  return (
+    <span
+      aria-label={`${value} out of 5 stars`}
+      style={{
+        position: 'relative',
+        display: 'inline-block',
+        whiteSpace: 'nowrap',
+        fontSize: size,
+        lineHeight: 1,
+        letterSpacing: 1.5,
+        color: 'rgba(255,255,255,.22)'
+      }}
+    >
+      ★★★★★
+      <span
+        aria-hidden
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: `${pct}%`,
+          overflow: 'hidden',
+          letterSpacing: 1.5,
+          color: STAR
+        }}
+      >
+        ★★★★★
+      </span>
+    </span>
+  )
+}
+
+/** The composer's own star row, wired to the account's real rating. */
+function RatingPicker({ value, onPick }) {
+  const [hover, setHover] = useState(0)
+  const shown = hover || value
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 2 }} onMouseLeave={() => setHover(0)}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            onMouseEnter={() => setHover(n)}
+            onClick={() => onPick(n)}
+            aria-label={`Rate ${n} of 5`}
+            style={{
+              padding: '0 1px',
+              border: 'none',
+              background: 'transparent',
+              color: n <= shown ? STAR : 'rgba(255,255,255,.26)',
+              fontSize: 16,
+              lineHeight: 1,
+              cursor: 'pointer',
+              transition: 'color .12s'
+            }}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      <span style={{ color: 'rgba(255,255,255,.5)', fontSize: 11, fontWeight: 700 }}>
+        {value ? `You rated this ${value}/5` : 'Rate it'}
+      </span>
+    </div>
+  )
+}
+
+function Avatar({ src, seed, text, size }) {
+  const [failed, setFailed] = useState(false)
+  const hue = typeof seed === 'number' ? seed : (String(seed).charCodeAt(0) * 7) % 360
+  return (
+    <span
+      style={{
+        position: 'relative',
+        width: size,
+        height: size,
+        flex: 'none',
+        display: 'grid',
+        placeItems: 'center',
+        overflow: 'hidden',
+        borderRadius: '50%',
+        background: grad(hue),
+        color: '#fff',
+        fontWeight: 900,
+        fontSize: size * 0.36
+      }}
+    >
+      {src && !failed ? (
+        <img
+          src={src}
+          alt=""
+          onError={() => setFailed(true)}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      ) : (
+        text
+      )}
+    </span>
+  )
+}
+
+/* --- world tabs: poster vs. trailer read as two separate panes, the way a
+   shorts app's top nav switches feeds, not as a small corner toggle. -------- */
+
+function WorldTabs({ tab, onChange }) {
+  return (
+    <div style={{ display: 'flex', gap: 22 }}>
+      {[
+        ['poster', 'Poster'],
+        ['trailer', 'Trailer']
+      ].map(([id, label]) => (
+        <button
+          key={id}
+          onClick={() => onChange(id)}
+          style={{
+            position: 'relative',
+            padding: '4px 1px 9px',
+            border: 'none',
+            background: 'transparent',
+            color: tab === id ? '#fff' : 'rgba(255,255,255,.55)',
+            fontWeight: 900,
+            fontSize: 13,
+            letterSpacing: 0.3,
+            textShadow: '0 1px 6px rgba(0,0,0,.6)',
+            cursor: 'pointer',
+            transition: 'color .15s'
+          }}
+        >
+          {label}
+          {tab === id && (
+            <span
+              aria-hidden
+              style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 2, background: '#fff' }}
+            />
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/* --- squared controls ---------------------------------------------------- */
+
+function FlatButton({ children, onClick, subtle }) {
+  const [hov, bind] = useHover()
+  return (
+    <button
+      {...bind}
+      onClick={onClick}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: subtle ? '6px 10px' : '9px 16px',
+        borderRadius: R_SM,
+        border: `1px solid ${hov ? 'rgba(255,255,255,.4)' : HAIR}`,
+        background: hov ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.08)',
+        color: '#fff',
+        fontWeight: 800,
+        fontSize: subtle ? 11.5 : 13,
+        cursor: 'pointer',
+        transition: 'background .15s, border-color .15s'
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function SquareButton({ icon, label, onClick, style }) {
+  const [hov, bind] = useHover()
+  return (
+    <button
+      {...bind}
+      onClick={onClick}
+      aria-label={label}
+      style={{
+        width: 32,
+        height: 32,
+        display: 'grid',
+        placeItems: 'center',
+        borderRadius: R_SM,
+        border: `1px solid ${hov ? 'rgba(255,255,255,.4)' : HAIR}`,
+        background: hov ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.08)',
+        backdropFilter: 'blur(6px)',
+        color: '#fff',
+        cursor: 'pointer',
+        transition: 'background .15s, border-color .15s',
+        ...style
+      }}
+    >
+      {icon}
+    </button>
+  )
+}
+
+function PagerButton({ icon, label, onClick }) {
   const [hov, bind] = useHover()
   return (
     <button
@@ -157,358 +1102,185 @@ function FeedNav({ label, glyph, onClick }) {
       style={{
         width: 42,
         height: 42,
+        display: 'grid',
+        placeItems: 'center',
         borderRadius: '50%',
-        border: `1px solid ${hov ? 'var(--fm-accent)' : 'var(--fm-border)'}`,
-        background: 'var(--fm-elev)',
-        color: hov ? 'var(--fm-accent)' : 'var(--fm-text)',
+        border: 'none',
+        background: hov ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.11)',
+        color: '#fff',
         cursor: 'pointer',
-        boxShadow: '0 8px 22px rgba(0,0,0,.3)',
-        transition: 'all .2s'
+        transition: 'background .15s'
       }}
     >
-      {glyph}
+      {icon}
     </button>
   )
 }
 
-function FeedItem({ movie, reason, isActive, genreMap }) {
-  const { state, patch, openMovie, toggleWatch } = useStore()
-  const [muted, setMuted] = useState(true)
+/* --- icons ---------------------------------------------------------------
+   Line icons rather than emoji: the rail and the comment rows need to read as
+   one set at small sizes, which colour emoji never do.
+   ------------------------------------------------------------------------- */
 
-  const liked = Boolean(state.feedLiked[movie.id])
-  const saved = state.watchlist.includes(movie.id)
-  const tab = state.feedTab[movie.id] ?? (isActive ? 'trailer' : 'poster')
-  const detail = useMovieDetails(tab === 'trailer' ? movie.id : null, genreMap)
-
-  const setTab = (t) => patch((s) => ({ feedTab: { ...s.feedTab, [movie.id]: t } }))
-
+function Svg({ children, size = 20, fill = 'none', width = 1.9 }) {
   return (
-    <div
-      data-movie-id={movie.id}
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: 'calc(100vh - 175px)',
-        scrollSnapAlign: 'start',
-        scrollSnapStop: 'always',
-        overflow: 'hidden',
-        background: backdrop(movie.hue)
-      }}
-    >
-      {tab === 'poster' && <PosterImage src={movie.posterUrl} />}
-
-      {tab === 'trailer' &&
-        (detail?.trailerKey ? (
-          <>
-            <iframe
-              title={`${movie.title} trailer`}
-              src={`https://www.youtube.com/embed/${detail.trailerKey}?autoplay=1&mute=${muted ? 1 : 0}&loop=1&playlist=${detail.trailerKey}&controls=0`}
-              allow="autoplay; encrypted-media"
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
-            />
-            <button
-              onClick={() => setMuted((m) => !m)}
-              aria-label={muted ? 'Unmute' : 'Mute'}
-              style={{
-                position: 'absolute',
-                top: 16,
-                right: 16,
-                zIndex: 3,
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                border: 'none',
-                background: 'rgba(0,0,0,.5)',
-                backdropFilter: 'blur(6px)',
-                color: '#fff',
-                fontSize: 15,
-                cursor: 'pointer'
-              }}
-            >
-              {muted ? '🔇' : '🔊'}
-            </button>
-          </>
-        ) : (
-          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 28, textAlign: 'center' }}>
-            <div>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>▶</div>
-              {!detail ? (
-                <div style={{ color: '#fff', fontWeight: 900, fontSize: 16 }}>Loading trailer…</div>
-              ) : (
-                <>
-                  <div style={{ color: '#fff', fontWeight: 900, fontSize: 16, marginBottom: 14 }}>
-                    Watch the trailer on YouTube
-                  </div>
-                  <a
-                    href={movie.trailerLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{
-                      display: 'inline-block',
-                      padding: '10px 18px',
-                      borderRadius: 12,
-                      background: 'rgba(255,255,255,.16)',
-                      border: '1px solid rgba(255,255,255,.35)',
-                      color: '#fff',
-                      fontWeight: 800,
-                      fontSize: 13
-                    }}
-                  >
-                    Open YouTube ↗
-                  </a>
-                </>
-              )}
-            </div>
-          </div>
-        ))}
-
-      {tab === 'comments' && (
-        <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '70px 16px 90px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.6)', marginBottom: 10 }}>
-            Sample comments, there's no review feed behind these yet.
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {REVIEW_POOL.map(([who, hue, stars, text]) => (
-              <div
-                key={who}
-                style={{
-                  display: 'flex',
-                  gap: 8,
-                  alignItems: 'flex-start',
-                  background: 'rgba(255,255,255,.08)',
-                  backdropFilter: 'blur(6px)',
-                  borderRadius: 12,
-                  padding: '10px 12px'
-                }}
-              >
-                <span
-                  style={{
-                    width: 26,
-                    height: 26,
-                    flex: 'none',
-                    borderRadius: '50%',
-                    background: grad(hue),
-                    display: 'grid',
-                    placeItems: 'center',
-                    color: '#fff',
-                    fontWeight: 900,
-                    fontSize: 11
-                  }}
-                >
-                  {who[0]}
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: '#fff', fontWeight: 800, fontSize: 12 }}>{who}</span>
-                    <span style={{ color: '#ffce54', fontSize: 10.5 }}>{stars}</span>
-                  </div>
-                  <div style={{ color: 'rgba(255,255,255,.82)', fontWeight: 500, fontSize: 12, lineHeight: 1.4 }}>{text}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'linear-gradient(0deg,rgba(0,0,0,.94) 6%,rgba(0,0,0,.1) 40%,rgba(0,0,0,.45))',
-          pointerEvents: 'none'
-        }}
-      />
-
-      <div
-        style={{
-          position: 'absolute',
-          top: 16,
-          left: 16,
-          right: 16,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 7,
-            padding: '7px 13px',
-            borderRadius: 20,
-            background: 'rgba(0,0,0,.5)',
-            backdropFilter: 'blur(8px)'
-          }}
-        >
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--fm-accent)' }} />
-          <span style={{ color: '#fff', fontWeight: 800, fontSize: 11 }}>{reason}</span>
-        </div>
-        <div style={{ display: 'flex', padding: 3, borderRadius: 14, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(8px)' }}>
-          <TabButton active={tab === 'poster'} onClick={() => setTab('poster')}>
-            Poster
-          </TabButton>
-          <TabButton active={tab === 'trailer'} onClick={() => setTab('trailer')}>
-            ▶ Trailer
-          </TabButton>
-          <TabButton active={tab === 'comments'} onClick={() => setTab('comments')}>
-            Comments
-          </TabButton>
-        </div>
-      </div>
-
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: '18px 14px 20px 18px',
-          display: 'flex',
-          alignItems: 'flex-end',
-          gap: 10
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              marginBottom: 7,
-              color: 'rgba(255,255,255,.82)',
-              fontWeight: 700,
-              fontSize: 11.5,
-              flexWrap: 'wrap'
-            }}
-          >
-            <span style={{ color: '#ffce54' }}>★ {movie.rating}</span>
-            <span>· {movie.year}</span>
-            <span>· {movie.genre}</span>
-          </div>
-
-          <div
-            className="fm-disp"
-            onClick={() => openMovie(movie.id)}
-            style={{
-              fontSize: 30,
-              lineHeight: 0.96,
-              color: '#fff',
-              cursor: 'pointer',
-              marginBottom: 7,
-              textShadow: '0 2px 16px rgba(0,0,0,.55)'
-            }}
-          >
-            {movie.title}
-          </div>
-
-          <p
-            className="fm-clamp-2"
-            style={{
-              margin: '0 0 12px',
-              color: 'rgba(255,255,255,.86)',
-              fontWeight: 500,
-              fontSize: 12,
-              lineHeight: 1.45
-            }}
-          >
-            {movie.synopsis}
-          </p>
-
-          <DetailsButton onClick={() => openMovie(movie.id)} />
-        </div>
-
-        <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
-          <FeedAction
-            label="Like"
-            glyph={liked ? '♥' : '♡'}
-            colour={liked ? 'var(--fm-accent)' : '#fff'}
-            onClick={() => patch((s) => ({ feedLiked: { ...s.feedLiked, [movie.id]: !s.feedLiked[movie.id] } }))}
-          />
-          <FeedAction
-            label="Save"
-            glyph={saved ? '✓' : '＋'}
-            colour={saved ? 'var(--fm-accent)' : '#fff'}
-            onClick={() => toggleWatch(movie.id)}
-          />
-          <FeedAction label="Share" glyph="↗" colour="#fff" onClick={() => patch({ shareOpen: true })} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function TabButton({ children, active, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '7px 13px',
-        border: 'none',
-        borderRadius: 11,
-        background: active ? '#fff' : 'transparent',
-        color: active ? '#141014' : '#fff',
-        fontWeight: 800,
-        fontSize: 11.5,
-        cursor: 'pointer',
-        transition: 'all .2s'
-      }}
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={fill}
+      stroke="currentColor"
+      strokeWidth={width}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ display: 'block' }}
     >
       {children}
-    </button>
+    </svg>
   )
 }
 
-function DetailsButton({ onClick }) {
-  const [hov, bind] = useHover()
+function HeartIcon({ filled }) {
   return (
-    <button
-      {...bind}
-      onClick={onClick}
-      style={{
-        padding: '11px 20px',
-        border: '1px solid rgba(255,255,255,.4)',
-        borderRadius: 12,
-        background: hov ? 'rgba(255,255,255,.24)' : 'rgba(255,255,255,.14)',
-        backdropFilter: 'blur(8px)',
-        color: '#fff',
-        fontWeight: 800,
-        fontSize: 13.5,
-        cursor: 'pointer',
-        transition: 'all .2s'
-      }}
-    >
-      Details
-    </button>
+    <Svg size={21} fill={filled ? 'currentColor' : 'none'}>
+      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z" />
+    </Svg>
   )
 }
 
-function FeedAction({ label, glyph, colour, onClick }) {
-  const [hov, bind] = useHover()
+function CommentIcon() {
   return (
-    <div style={{ textAlign: 'center' }}>
-      <button
-        {...bind}
-        onClick={onClick}
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: '50%',
-          border: 'none',
-          background: 'rgba(0,0,0,.45)',
-          backdropFilter: 'blur(8px)',
-          color: colour,
-          fontSize: 18,
-          fontWeight: 900,
-          cursor: 'pointer',
-          transform: hov ? 'scale(1.12)' : 'none',
-          transition: 'transform .18s'
-        }}
-      >
-        {glyph}
-      </button>
-      <div style={{ color: '#fff', fontSize: 9.5, fontWeight: 700, marginTop: 3 }}>{label}</div>
-    </div>
+    <Svg size={20}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </Svg>
+  )
+}
+
+function ShareIcon() {
+  return (
+    <Svg size={20}>
+      <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" />
+      <path d="M16 6l-4-4-4 4" />
+      <path d="M12 2v13" />
+    </Svg>
+  )
+}
+
+function PlusIcon() {
+  return (
+    <Svg size={21}>
+      <path d="M12 5v14M5 12h14" />
+    </Svg>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <Svg size={20}>
+      <path d="M20 6L9 17l-5-5" />
+    </Svg>
+  )
+}
+
+function ChevronUpIcon() {
+  return (
+    <Svg size={20}>
+      <path d="M18 15l-6-6-6 6" />
+    </Svg>
+  )
+}
+
+function ChevronDownIcon() {
+  return (
+    <Svg size={20}>
+      <path d="M6 9l6 6 6-6" />
+    </Svg>
+  )
+}
+
+function BackArrowIcon() {
+  return (
+    <Svg size={17}>
+      <path d="M19 12H5" />
+      <path d="M11 18l-6-6 6-6" />
+    </Svg>
+  )
+}
+
+function CloseIcon() {
+  return (
+    <Svg size={16}>
+      <path d="M18 6L6 18M6 6l12 12" />
+    </Svg>
+  )
+}
+
+function SortIcon() {
+  return (
+    <Svg size={14}>
+      <path d="M4 6h16M4 12h10M4 18h5" />
+    </Svg>
+  )
+}
+
+function ThumbUpIcon() {
+  return (
+    <Svg size={15} width={1.8}>
+      <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.3a2 2 0 0 0 2-1.7l1.4-9a2 2 0 0 0-2-2.3z" />
+      <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+    </Svg>
+  )
+}
+
+function ThumbDownIcon() {
+  return (
+    <Svg size={15} width={1.8}>
+      <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.7a2 2 0 0 0-2 1.7l-1.4 9a2 2 0 0 0 2 2.3z" />
+      <path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3" />
+    </Svg>
+  )
+}
+
+function MutedIcon() {
+  return (
+    <Svg size={16}>
+      <path d="M11 5L6 9H2v6h4l5 4z" />
+      <path d="M23 9l-6 6M17 9l6 6" />
+    </Svg>
+  )
+}
+
+function SoundIcon() {
+  return (
+    <Svg size={16}>
+      <path d="M11 5L6 9H2v6h4l5 4z" />
+      <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" />
+    </Svg>
+  )
+}
+
+function PlayIcon({ size = 24 }) {
+  return (
+    <Svg size={size} fill="currentColor" width={0}>
+      <path d="M8 5v14l11-7z" />
+    </Svg>
+  )
+}
+
+function PauseIcon() {
+  return (
+    <Svg size={14} fill="currentColor" width={0}>
+      <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
+    </Svg>
+  )
+}
+
+function InfoIcon() {
+  return (
+    <Svg size={16}>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M12 11v5.5" />
+      <circle cx="12" cy="7.7" r="0.9" fill="currentColor" stroke="none" />
+    </Svg>
   )
 }

@@ -1,23 +1,20 @@
 import { useMemo } from 'react'
 import { useStore } from '../app/storeContext'
 import { grad } from '../app/art'
+import { useMovieProviders } from '../app/useMovieProviders'
+import PosterCard from '../components/PosterCard'
 import PosterImage from '../components/PosterImage'
+import RowScroller from '../components/RowScroller'
 import { SoonTag } from '../components/primitives'
 import { useHover } from '../app/ui'
 
 /**
  * In Theatres.
  *
- * The catalogue has no showtime or streaming-provider feed, so the listings
- * are drawn from the newest titles and the provider badges are illustrative,
- * both flagged in the header.
+ * The catalogue has no real showtime feed, so the listings are drawn from
+ * the newest titles rather than an actual box-office schedule; the provider
+ * badges underneath each poster are real TMDb/JustWatch US availability.
  */
-const PROVIDERS = [
-  ['Netflix', '#e50914'],
-  ['Prime', '#00a8e1'],
-  ['Disney+', '#113ccf'],
-  ['Max', '#7c3aed']
-]
 
 export default function Theatres() {
   const { state, openMovie, showSoon } = useStore()
@@ -28,7 +25,10 @@ export default function Theatres() {
   }, [state.movies])
 
   return (
-    <div style={{ padding: '34px 40px 64px', maxWidth: 1440, margin: '0 auto', animation: 'fmFade .35s ease' }}>
+    <div
+      className="fm-page-pad"
+      style={{ paddingTop: 34, paddingBottom: 64, maxWidth: 1440, margin: '0 auto', animation: 'fmFade .35s ease' }}
+    >
       <h1 className="fm-disp" style={{ margin: '0 0 6px', fontSize: 46, lineHeight: 1 }}>
         In Theatres Now
       </h1>
@@ -81,46 +81,21 @@ export default function Theatres() {
       <h2 className="fm-disp" style={{ margin: '0 0 18px', fontSize: 30 }}>
         Coming Soon
       </h2>
-      <div className="fm-scroll" style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 14 }}>
+      <RowScroller>
         {comingSoon.map((m) => (
-          <div key={m.id} onClick={() => openMovie(m.id)} style={{ flex: 'none', width: 236, cursor: 'pointer' }}>
-            <div
-              style={{
-                position: 'relative',
-                width: 236,
-                height: 136,
-                borderRadius: 16,
-                overflow: 'hidden',
-                background: grad(m.hue),
-                boxShadow: '0 10px 26px rgba(0,0,0,.28)'
-              }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: 'linear-gradient(0deg,rgba(0,0,0,.82),transparent 64%)'
-                }}
-              />
-              <div style={{ position: 'absolute', bottom: 13, left: 15, right: 15 }}>
-                <div className="fm-disp" style={{ color: '#fff', fontSize: 19 }}>
-                  {m.title}
-                </div>
-                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.68)', fontWeight: 700 }}>
-                  Released {m.year}
-                </div>
-              </div>
-            </div>
+          <div key={m.id} style={{ flex: 'none', width: 174, scrollSnapAlign: 'start' }}>
+            <PosterCard movie={m} />
           </div>
         ))}
-      </div>
+      </RowScroller>
     </div>
   )
 }
 
 function NowPlayingCard({ movie, onClick }) {
   const [hov, bind] = useHover()
-  const where = [PROVIDERS[movie.id % 4], PROVIDERS[(movie.id + 2) % 4]]
+  const providers = useMovieProviders(movie.id)
+  const where = (providers?.flatrate || providers?.rent || providers?.buy || []).slice(0, 3)
 
   return (
     <div
@@ -165,23 +140,21 @@ function NowPlayingCard({ movie, onClick }) {
           }}
         />
         <div style={{ position: 'absolute', bottom: 0, padding: 16 }}>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 9 }}>
-            {where.map(([name, bg]) => (
-              <span
-                key={name}
-                style={{
-                  padding: '3px 9px',
-                  borderRadius: 6,
-                  background: bg,
-                  color: '#fff',
-                  fontWeight: 900,
-                  fontSize: 10
-                }}
-              >
-                {name}
-              </span>
-            ))}
-          </div>
+          {where.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 9 }}>
+              {where.map((p) => (
+                <img
+                  key={p.provider_id}
+                  src={`https://image.tmdb.org/t/p/w92${p.logo_path}`}
+                  alt={p.provider_name}
+                  title={p.provider_name}
+                  width={26}
+                  height={26}
+                  style={{ borderRadius: 7 }}
+                />
+              ))}
+            </div>
+          )}
           <div className="fm-disp" style={{ fontSize: 22, color: '#fff', lineHeight: 1 }}>
             {movie.title}
           </div>

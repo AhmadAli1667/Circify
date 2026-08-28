@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../app/storeContext'
 import { PRESET_LIST } from '../app/theme'
 import { SERIES_AVAILABLE } from '../app/catalog'
+import { initialsOf } from '../app/art'
 import { Logo, SearchIcon, SoonTag } from './primitives'
-import { pill, useHover } from '../app/ui'
+import { pill, useHover, useIsMobile } from '../app/ui'
 
 const NAV_ITEMS = [
   { k: 'theatres', l: 'In Theatres' },
@@ -21,9 +22,32 @@ const MENU_LINKS = [
 
 export default function Navbar() {
   const { state, nav } = useStore()
+  const isMobile = useIsMobile()
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const navRef = useRef(null)
+
+  // Publishes the navbar's real rendered height as a CSS var, so full-screen
+  // screens (ForYou, Chat) can size against it instead of a hardcoded guess
+  // that would desync whenever the navbar's own height changes (like now,
+  // opening the mobile panel below).
+  useEffect(() => {
+    const el = navRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const setVar = () => document.documentElement.style.setProperty('--fm-navbar-h', `${el.offsetHeight}px`)
+    setVar()
+    const ro = new ResizeObserver(setVar)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const goTo = (screen, extra) => {
+    setMobileOpen(false)
+    nav(screen, extra)
+  }
 
   return (
     <nav
+      ref={navRef}
       style={{
         position: 'sticky',
         top: 0,
@@ -40,7 +64,7 @@ export default function Navbar() {
       }}
     >
       <div
-        onClick={() => nav('home')}
+        onClick={() => goTo('home')}
         style={{ display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer', flex: 'none' }}
       >
         <Logo />
@@ -49,64 +73,129 @@ export default function Navbar() {
         </span>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 'none' }}>
-        {NAV_ITEMS.map((n) => (
-          <NavLink key={n.k} item={n} active={state.screen === n.k} onClick={() => nav(n.k)} />
-        ))}
-      </div>
+      {!isMobile && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 'none' }}>
+          {NAV_ITEMS.map((n) => (
+            <NavLink key={n.k} item={n} active={state.screen === n.k} onClick={() => goTo(n.k)} />
+          ))}
+        </div>
+      )}
 
-      <div
-        style={{
-          flex: 1,
-          maxWidth: 560,
-          margin: '0 auto',
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 9,
-          minWidth: 250
-        }}
-      >
-        <SearchField />
-        <FilterPopover />
-      </div>
+      {!isMobile && (
+        <div
+          style={{
+            flex: 1,
+            maxWidth: 560,
+            margin: '0 auto',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 9,
+            minWidth: 250
+          }}
+        >
+          <SearchField />
+          <FilterPopover />
+        </div>
+      )}
+
+      {isMobile && <div style={{ flex: 1 }} />}
+      {isMobile && (
+        <HamburgerButton open={mobileOpen} onClick={() => setMobileOpen((o) => !o)} />
+      )}
 
       <AvatarMenu />
+
+      {isMobile && mobileOpen && (
+        <div
+          style={{
+            width: '100%',
+            order: 99,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            padding: '14px 2px 4px',
+            animation: 'fmFade .2s ease'
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {NAV_ITEMS.map((n) => (
+              <NavLink key={n.k} item={n} active={state.screen === n.k} onClick={() => goTo(n.k)} full />
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <SearchField />
+            <FilterPopover />
+          </div>
+        </div>
+      )}
     </nav>
   )
 }
 
-function NavLink({ item, active, onClick }) {
+function HamburgerButton({ open, onClick }) {
+  const [hov, bind] = useHover()
+  return (
+    <button
+      {...bind}
+      onClick={onClick}
+      aria-label={open ? 'Close menu' : 'Open menu'}
+      aria-expanded={open}
+      style={{
+        width: 44,
+        height: 44,
+        flex: 'none',
+        display: 'grid',
+        placeItems: 'center',
+        border: `1px solid ${open || hov ? 'var(--fm-accent)' : 'var(--fm-border)'}`,
+        background: open ? 'var(--fm-accent)' : 'var(--fm-input)',
+        borderRadius: 13,
+        color: open ? '#fff' : 'var(--fm-text)',
+        fontSize: 18,
+        cursor: 'pointer',
+        transition: 'all .2s'
+      }}
+    >
+      {open ? '✕' : '☰'}
+    </button>
+  )
+}
+
+function NavLink({ item, active, onClick, full }) {
   const [hov, bind] = useHover()
   return (
     <button
       {...bind}
       onClick={onClick}
       style={{
-        padding: '8px 13px',
+        width: full ? '100%' : undefined,
+        textAlign: full ? 'left' : undefined,
+        padding: full ? '11px 13px' : '8px 13px',
         border: 'none',
-        background: 'none',
+        borderRadius: 11,
+        background: full && active ? 'var(--fm-hover)' : 'none',
         color: active || hov ? 'var(--fm-text)' : 'var(--fm-muted)',
         fontWeight: active ? 900 : 700,
-        fontSize: 14,
-        borderRadius: 9,
+        fontSize: full ? 15 : 14,
         cursor: 'pointer',
         transition: 'color .2s',
         position: 'relative'
       }}
     >
       {item.l}
-      <span
-        style={{
-          position: 'absolute',
-          left: 13,
-          right: 13,
-          bottom: 2,
-          height: 2,
-          borderRadius: 2,
-          background: active ? 'var(--fm-accent)' : 'transparent'
-        }}
-      />
+      {!full && (
+        <span
+          style={{
+            position: 'absolute',
+            left: 13,
+            right: 13,
+            bottom: 2,
+            height: 2,
+            borderRadius: 2,
+            background: active ? 'var(--fm-accent)' : 'transparent'
+          }}
+        />
+      )}
     </button>
   )
 }
@@ -210,7 +299,7 @@ function FilterPopover() {
             position: 'absolute',
             top: 54,
             right: 0,
-            width: 340,
+            width: 'min(340px, calc(100vw - 32px))',
             maxHeight: '76vh',
             overflowY: 'auto',
             background: 'var(--fm-elev)',
@@ -312,13 +401,14 @@ export function ChipButton({ children, active, onClick, grow, small, trailing })
 }
 
 function AvatarMenu() {
-  const { state, patch, nav } = useStore()
+  const { state, patch, nav, logout } = useStore()
   const [hov, bind] = useHover()
 
+  const displayName = state.user?.displayName || 'Guest'
   const avatarBg = state.avatar
     ? `#111 center/cover no-repeat url(${state.avatar})`
     : 'linear-gradient(135deg,var(--fm-accent),var(--fm-accent2))'
-  const initial = state.avatar ? '' : 'A'
+  const initial = state.avatar ? '' : initialsOf(displayName)
   const dark = state.mode === 'dark'
 
   return (
@@ -338,7 +428,7 @@ function AvatarMenu() {
           transition: 'border .2s'
         }}
       >
-        <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--fm-text)' }}>Alex</span>
+        <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--fm-text)' }}>{displayName.split(' ')[0]}</span>
         <span
           style={{
             width: 34,
@@ -362,7 +452,9 @@ function AvatarMenu() {
             position: 'absolute',
             top: 52,
             right: 0,
-            width: 290,
+            width: 'min(290px, calc(100vw - 32px))',
+            maxHeight: '80vh',
+            overflowY: 'auto',
             background: 'var(--fm-elev)',
             border: '1px solid var(--fm-border)',
             borderRadius: 18,
@@ -372,7 +464,7 @@ function AvatarMenu() {
             animation: 'fmPop .2s ease'
           }}
         >
-          <MenuRow onClick={() => nav('profile')} style={{ gap: 12, padding: 12 }}>
+          <MenuRow onClick={() => nav(state.user ? 'profile' : 'auth')} style={{ gap: 12, padding: 12 }}>
             <span
               style={{
                 width: 44,
@@ -389,8 +481,10 @@ function AvatarMenu() {
               {initial}
             </span>
             <div>
-              <div style={{ fontWeight: 900, fontSize: 15 }}>Alex Rivera</div>
-              <div style={{ fontSize: 12, color: 'var(--fm-muted)', fontWeight: 600 }}>View profile ›</div>
+              <div style={{ fontWeight: 900, fontSize: 15 }}>{displayName}</div>
+              <div style={{ fontSize: 12, color: 'var(--fm-muted)', fontWeight: 600 }}>
+                {state.user ? 'View profile ›' : 'Sign in ›'}
+              </div>
             </div>
           </MenuRow>
 
@@ -468,9 +562,11 @@ function AvatarMenu() {
             <span style={{ width: 20, textAlign: 'center', color: 'var(--fm-muted)' }}>↗</span>
             <span style={{ fontWeight: 700, fontSize: 14 }}>Share with friends</span>
           </MenuRow>
-          <MenuRow onClick={() => nav('auth')}>
+          <MenuRow onClick={() => (state.user ? logout() : nav('auth'))}>
             <span style={{ width: 20, textAlign: 'center', color: 'var(--fm-accent)' }}>⏻</span>
-            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--fm-accent)' }}>Sign out</span>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--fm-accent)' }}>
+              {state.user ? 'Sign out' : 'Sign in'}
+            </span>
           </MenuRow>
         </div>
       )}

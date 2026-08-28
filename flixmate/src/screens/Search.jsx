@@ -20,7 +20,10 @@ export default function Search() {
         : 'All titles'
 
   return (
-    <div style={{ padding: '28px 40px 64px', maxWidth: 1500, margin: '0 auto', animation: 'fmFade .35s ease' }}>
+    <div
+      className="fm-page-pad"
+      style={{ paddingTop: 28, paddingBottom: 64, maxWidth: 1500, margin: '0 auto', animation: 'fmFade .35s ease' }}
+    >
       <div
         style={{
           display: 'flex',

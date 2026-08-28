@@ -1,4 +1,5 @@
 import { useStore } from './app/storeContext'
+import { useIsMobile } from './app/ui'
 import Navbar from './components/Navbar'
 import MovieModal from './components/MovieModal'
 import TrailerModal from './components/TrailerModal'
@@ -36,19 +37,25 @@ const SCREENS = {
 
 export default function App() {
   const { state } = useStore()
+  const isMobile = useIsMobile()
   const Screen = SCREENS[state.screen] || Home
 
   if (state.moviesLoading) return <BootScreen />
 
+  // For You goes full-screen on mobile, a Shorts-style immersive feed has no
+  // room, or need, for the normal nav chrome, its own overlaid back button
+  // is the way out. Desktop keeps the navbar, there's space for it there.
+  const immersive = isMobile && state.screen === 'foryou'
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--fm-bg)', color: 'var(--fm-text)' }}>
-      <Navbar />
+      {!immersive && <Navbar />}
       <Screen />
 
       <MovieModal />
       <ShareModal />
       <TrailerModal />
-      <ChatWidget />
+      {!immersive && <ChatWidget />}
       <Toast message={state.toast} />
     </div>
   )

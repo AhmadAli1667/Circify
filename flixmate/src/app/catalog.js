@@ -167,3 +167,49 @@ export function adaptPerson(person, credits, genreMap) {
     filmography
   }
 }
+
+/**
+ * Review bodies come back with stray HTML and markdown emphasis in them, and
+ * the reviews panel renders plain text, so they're flattened once here rather
+ * than at every render.
+ */
+function cleanReviewText(text) {
+  return text
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\*\*|__/g, '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+/**
+ * TMDb community review → the comment shape the For You reviews panel
+ * renders. `author_details.rating` is out of 10 and often absent (TMDb lets
+ * people write without scoring), so `stars` is null rather than 0 in that
+ * case, the row then shows no star strip at all instead of an empty one.
+ *
+ * Avatars come back in two shapes: a TMDb-hosted path (`/abc.jpg`) or a
+ * Gravatar URL with a stray leading slash (`/https://...`), hence the sniff.
+ */
+export function adaptReview(r) {
+  if (!r || !r.content) return null
+  const details = r.author_details || {}
+  const username = details.username || r.author || 'viewer'
+  const avatar = details.avatar_path || ''
+  const rating10 = typeof details.rating === 'number' ? details.rating : null
+
+  return {
+    id: r.id,
+    author: (details.name || '').trim() || r.author || username,
+    handle: `@${username}`,
+    avatarUrl: avatar ? (avatar.includes('http') ? avatar.replace(/^\//, '') : `${PROFILE_IMG}${avatar}`) : null,
+    rating10,
+    stars: rating10 === null ? null : rating10 / 2,
+    text: cleanReviewText(r.content),
+    createdAt: r.created_at,
+    url: r.url,
+    hue: hueFor(username),
+    initial: initialsOf(username)
+  }
+}
