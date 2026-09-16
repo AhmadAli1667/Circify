@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Breadboard Concept — Circify</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0e1014;
+      color: #e1e2eb;
+      font-family: 'Inter', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 20px 40px;
+      min-height: 100vh;
+      gap: 20px;
+    }
+    header { text-align: center; }
+    header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #e1e2eb;
+      margin-bottom: 4px;
+    }
+    header p {
+      font-size: 11px;
+      color: #859584;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    canvas { display: block; border-radius: 8px; }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .sw {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .sw-label { font-size: 9px; color: #859584; text-transform: uppercase; letter-spacing: 1px; font-family: 'JetBrains Mono', monospace; }
+    .sw-btn {
+      padding: 9px 24px;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 2px solid;
+      cursor: pointer;
+      background: transparent;
+      transition: all 140ms;
+      min-width: 110px;
+      text-align: center;
+    }
+    .sw-btn.a     { border-color: rgba(64,128,255,0.35); color: #6090ff; }
+    .sw-btn.a.on  { border-color: #4080ff; background: rgba(64,128,255,0.14); color: #a0c0ff; box-shadow: 0 0 14px rgba(64,128,255,0.25); }
+    .sw-btn.b     { border-color: rgba(255,128,64,0.35); color: #ff9060; }
+    .sw-btn.b.on  { border-color: #ff8040; background: rgba(255,128,64,0.14); color: #ffb090; box-shadow: 0 0 14px rgba(255,128,64,0.25); }
+    .divider { width: 1px; height: 36px; background: #3c4a3c; }
+    .outputs { display: flex; gap: 16px; }
+    .out-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      padding: 14px 22px;
+      border: 1px solid #3c4a3c;
+      border-radius: 8px;
+      background: #1d2026;
+      min-width: 110px;
+    }
+    .out-tag { font-size: 9px; font-family: 'JetBrains Mono', monospace; color: #859584; text-transform: uppercase; letter-spacing: 1px; }
+    .out-val {
+      font-size: 32px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      transition: all 180ms;
+    }
+    .out-val.on  { color: #41ee78; text-shadow: 0 0 18px rgba(65,238,120,0.55); }
+    .out-val.off { color: #2e3c2e; }
+    .out-expr { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: #4a5a4a; }
+    .legend {
+      display: flex;
+      gap: 16px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: #4a5a4a;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .legend span { display: flex; align-items: center; gap: 5px; }
+    .legend-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Breadboard Simulation</h1>
+  <p>Half-Adder · 74HC86 (XOR) + 74HC08 (AND) · DIP-14 ICs · Interactive Concept</p>
+</header>
+
+<canvas id="bb" width="880" height="490"></canvas>
+
+<div class="controls">
+  <div class="sw">
+    <div class="sw-label">Input A</div>
+    <button id="btnA" class="sw-btn a">SW_A : LOW</button>
+  </div>
+  <div class="sw">
+    <div class="sw-label">Input B</div>
+    <button id="btnB" class="sw-btn b">SW_B : LOW</button>
+  </div>
+  <div class="divider"></div>
+  <div class="outputs">
+    <div class="out-card">
+      <div class="out-tag">Sum</div>
+      <div id="valSum" class="out-val off">0</div>
+      <div class="out-expr">A ⊕ B</div>
+    </div>
+    <div class="out-card">
+      <div class="out-tag">Carry</div>
+      <div id="valCarry" class="out-val off">0</div>
+      <div class="out-expr">A · B</div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <span><span class="legend-dot" style="background:#41ee78;box-shadow:0 0 5px #41ee78"></span>HIGH signal</span>
+  <span><span class="legend-dot" style="background:#3a3428"></span>LOW / undriven</span>
+  <span><span class="legend-dot" style="background:#cc2020"></span>VCC wire</span>
+  <span><span class="legend-dot" style="background:#505050"></span>GND wire</span>
+  <span><span class="legend-dot" style="background:#4080ff"></span>Input A</span>
+  <span><span class="legend-dot" style="background:#ff8040"></span>Input B</span>
+  <span><span class="legend-dot" style="background:#41ee78"></span>Sum output</span>
+  <span><span class="legend-dot" style="background:#ee4178"></span>Carry output</span>
+</div>
+
+<script>
+'use strict';
+const canvas = document.getElementById('bb');
+const ctx    = canvas.getContext('2d');
+
+// ── State ────────────────────────────────────────────────────────────
+let A = 0, B = 0;
+
+// ── Geometry ─────────────────────────────────────────────────────────
+const P   = 26;   // pitch between holes (px)
+const HR  = 3.2;  // hole radius
+const RR  = 5.6;  // metal ring radius
+const X0  = 62;   // x of column 1
+const COLS = 27;
+
+// Y positions for each row type
+const YR = {
+  railTP: 46,
+  railTN: 72,
+  A: 112,  B: 138,  C: 164,  D: 190,  E: 216,
+  // 36px center gap (216 → 252)
+  F: 252,  G: 278,  H: 304,  I: 330,  J: 356,
+  railBP: 392,
+  railBN: 418,
+};
+
+const TOP_ROWS = ['A','B','C','D','E'];
+const BOT_ROWS = ['F','G','H','I','J'];
+const ALL_ROWS = [...TOP_ROWS, ...BOT_ROWS];
+
+function cx(col) { return X0 + (col - 1) * P; }
+function ry(row) { return YR[row]; }
+
+// ── Net / signal resolution ───────────────────────────────────────────
+// Each column in the top half (A–E) is internally tied together,
+// and each column in the bottom half (F–J) is tied together.
+// We represent nets by (col, 'top') and (col, 'bot').
+// Rails are 'vcc' and 'gnd'.
+
+function computeNets(a, b) {
+  const sum   = a ^ b;
+  const carry = a & b;
+  const nets  = {};
+
+  // Rails
+  nets.vcc = 1;
+  nets.gnd = 0;
+
+  // Input A: col 2 top half
+  nets['2:top'] = a;
+  // Input B: col 4 top half
+  nets['4:top'] = b;
+
+  // --- 74HC86 XOR at cols 6–12 ---
+  // Top row (E): pins 1–7 at cols 6,7,8,9,10,11,12
+  //   Pin 1 (1A) = col 6   → wired to input A
+  //   Pin 2 (1B) = col 7   → wired to input B
+  //   Pin 3 (1Y) = col 8   → XOR output (Sum)
+  //   Pin 7 (GND) = col 12
+  // Bot row (F): pins 14–8 at cols 6,7,8,9,10,11,12
+  //   Pin 14 (VCC) = col 6, bottom
+  nets['6:top']  = a;        // pin 1 input A
+  nets['7:top']  = b;        // pin 2 input B
+  nets['8:top']  = sum;      // pin 3 output
+  nets['12:top'] = 0;        // pin 7 GND
+  nets['6:bot']  = 1;        // pin 14 VCC
+
+  // --- 74HC08 AND at cols 15–21 ---
+  //   Pin 1 (1A) = col 15  → input A
+  //   Pin 2 (1B) = col 16  → input B
+  //   Pin 3 (1Y) = col 17  → AND output (Carry)
+  //   Pin 7 (GND) = col 21
+  //   Pin 14 (VCC) = col 15, bottom
+  nets['15:top'] = a;        // pin 1
+  nets['16:top'] = b;        // pin 2
+  nets['17:top'] = carry;    // pin 3 output
+  nets['21:top'] = 0;        // pin 7 GND
+  nets['15:bot'] = 1;        // pin 14 VCC
+
+  // Output wires: Sum → col 24, Carry → col 25
+  nets['24:top'] = sum;
+  nets['25:top'] = carry;
+
+  return nets;
+}
+
+function holeNet(col, row) {
+  if (TOP_ROWS.includes(row)) return `${col}:top`;
+  if (BOT_ROWS.includes(row)) return `${col}:bot`;
+  return null;
+}
+
+function holeSig(col, row, nets) {
+  if (row === 'railTP' || row === 'railBP') return nets.vcc;
+  if (row === 'railTN' || row === 'railBN') return nets.gnd;
+  const key = holeNet(col, row);
+  return key != null && key in nets ? nets[key] : null;
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────
+
+function drawBoard() {
+  const bx = X0 - 18;
+  const by = YR.railTP - 16;
+  const bw = (COLS - 1) * P + 36;
+  const bh = YR.railBN + 16 - by;
+
+  // Board plastic body
+  ctx.fillStyle = '#1a1812';
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 8); ctx.fill();
+  ctx.strokeStyle = '#252218'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 8); ctx.stroke();
+
+  // Center gap slot
+  ctx.fillStyle = '#111008';
+  ctx.fillRect(bx + 4, YR.E + HR + 5, bw - 8, YR.F - YR.E - HR * 2 - 10);
+
+  // Rail tinted strips
+  const strips = [
+    { y: YR.railTP, color: 'rgba(180,30,30,0.16)', lineColor: 'rgba(160,30,30,0.5)' },
+    { y: YR.railTN, color: 'rgba(30,30,180,0.16)', lineColor: 'rgba(30,30,160,0.5)' },
+    { y: YR.railBP, color: 'rgba(180,30,30,0.16)', lineColor: 'rgba(160,30,30,0.5)' },
+    { y: YR.railBN, color: 'rgba(30,30,180,0.16)', lineColor: 'rgba(30,30,160,0.5)' },
+  ];
+  strips.forEach(({ y, color, lineColor }) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(bx + 4, y - 10, bw - 8, 22);
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(bx + 4, y + 13); ctx.lineTo(bx + bw - 4, y + 13); ctx.stroke();
+  });
+
+  // Row labels (A–J, +/-)
+  ctx.fillStyle = '#2e3828';
+  ctx.font = '8px JetBrains Mono, monospace';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  ALL_ROWS.forEach(r => ctx.fillText(r, X0 - 8, ry(r)));
+  ctx.fillText('+', X0 - 8, YR.railTP);
+  ctx.fillText('−', X0 - 8, YR.railTN);
+  ctx.fillText('+', X0 - 8, YR.railBP);
+  ctx.fillText('−', X0 - 8, YR.railBN);
+
+  // Column numbers every 5
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (let c = 5; c <= COLS; c += 5) {
+    ctx.fillText(String(c), cx(c), YR.railTP - 24);
+  }
+
+  // Center "notch" label
+  ctx.fillStyle = '#1e2818';
+  ctx.font = '9px JetBrains Mono, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('DIP CHANNEL', X0 + (COLS - 1) * P / 2, (YR.E + YR.F) / 2);
+}
+
+function drawHole(x, y, sig) {
+  const high = sig === 1;
+  const low  = sig === 0;
+
+  if (high) {
+    ctx.save();
+    ctx.shadowBlur = 12; ctx.shadowColor = '#41ee78';
+    ctx.fillStyle = '#41ee78';
+    ctx.beginPath(); ctx.arc(x, y, RR, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Metal ring
+  ctx.fillStyle = high ? '#2e5a38' : low ? '#28261e' : '#32302a';
+  ctx.beginPath(); ctx.arc(x, y, RR, 0, Math.PI * 2); ctx.fill();
+
+  // Sheen
+  if (!high) {
+    ctx.strokeStyle = high ? '#41ee78' : '#3e3c34';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath(); ctx.arc(x, y, RR - 0.8, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  // Hole void
+  ctx.fillStyle = high ? '#102018' : '#080806';
+  ctx.beginPath(); ctx.arc(x, y, HR, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawAllHoles(nets) {
+  for (let c = 1; c <= COLS; c++) {
+    const x = cx(c);
+    drawHole(x, YR.railTP, nets.vcc);
+    drawHole(x, YR.railTN, nets.gnd);
+    drawHole(x, YR.railBP, nets.vcc);
+    drawHole(x, YR.railBN, nets.gnd);
+    ALL_ROWS.forEach(r => drawHole(x, ry(r), holeSig(c, r, nets)));
+  }
+}
+
+function drawIC(startCol, shortName, fullName, active) {
+  const x1 = cx(startCol) - RR - 4;
+  const y1 = ry('E') - 14;       // top of body
+  const x2 = cx(startCol + 6) + RR + 4;
+  const y2 = ry('F') + 14;       // bottom of body
+  const w  = x2 - x1;
+  const h  = y2 - y1;
+
+  ctx.save();
+  ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.fillStyle = '#10121c';
+  ctx.beginPath(); ctx.roundRect(x1, y1, w, h, 4); ctx.fill();
+  ctx.restore();
+
+  ctx.strokeStyle = active ? '#2e4a3e' : '#252838';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.roundRect(x1, y1, w, h, 4); ctx.stroke();
+
+  // Notch (pin-1 indicator)
+  ctx.fillStyle = '#1a1e2e';
+  ctx.beginPath(); ctx.arc(x1 + w * 0.5, y1, 5, Math.PI, 0); ctx.fill();
+  ctx.strokeStyle = '#252838'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(x1 + w * 0.5, y1, 5, Math.PI, 0); ctx.stroke();
+
+  // Pin-1 dot
+  ctx.fillStyle = '#3a4a5a';
+  ctx.beginPath(); ctx.arc(x1 + 8, y1 + h * 0.5, 2.5, 0, Math.PI * 2); ctx.fill();
+
+  // Name text
+  ctx.fillStyle = active ? '#3a7a5a' : '#283040';
+  ctx.font = 'bold 9px JetBrains Mono, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(shortName, x1 + w / 2, y1 + h * 0.38);
+
+  ctx.fillStyle = active ? '#1e4a32' : '#1a2030';
+  ctx.font = '7px JetBrains Mono, monospace';
+  ctx.fillText(fullName, x1 + w / 2, y1 + h * 0.62);
+
+  // Leg indicators (faint lines into pin rows)
+  for (let i = 0; i < 7; i++) {
+    const lx = cx(startCol + i);
+    ctx.strokeStyle = '#1e2228'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(lx, y1); ctx.lineTo(lx, ry('E')); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lx, y2); ctx.lineTo(lx, ry('F')); ctx.stroke();
+  }
+}
+
+function drawWire(col1, row1, col2, row2, color, sig) {
+  const x1 = cx(col1), y1 = ry(row1);
+  const x2 = cx(col2), y2 = ry(row2);
+
+  const dx = Math.abs(x2 - x1);
+  const dy = Math.abs(y2 - y1);
+
+  let cp1x, cp1y, cp2x, cp2y;
+
+  if (dy > dx * 0.7) {
+    // Mostly vertical → arch horizontally to the side
+    const side = x2 >= x1 ? -1 : 1;
+    const arch = Math.min(dx * 0.5 + 18, 38) * side;
+    cp1x = x1 + arch; cp1y = y1;
+    cp2x = x2 + arch; cp2y = y2;
+  } else {
+    // Mostly horizontal → arch upward
+    const arch = Math.min(dx * 0.42 + 8, 82);
+    const topY  = Math.min(y1, y2) - arch;
+    cp1x = x1; cp1y = topY;
+    cp2x = x2; cp2y = topY;
+  }
+
+  ctx.save();
+  ctx.lineWidth   = 3.5;
+  ctx.lineCap     = 'round';
+  ctx.strokeStyle = color;
+  if (sig === 1) {
+    ctx.shadowBlur  = 9;
+    ctx.shadowColor = color;
+  } else {
+    ctx.globalAlpha = (sig === null) ? 0.35 : 0.78;
+  }
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x2, y2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawLED(col, sig, label) {
+  const x  = cx(col);
+  const yh = ry('A');         // hole position
+  const yl = yh - 28;        // LED body centre
+  const high = sig === 1;
+
+  // Leg
+  ctx.strokeStyle = '#2a3030'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(x, yh); ctx.lineTo(x, yl + 8); ctx.stroke();
+
+  // Body
+  ctx.save();
+  if (high) { ctx.shadowBlur = 22; ctx.shadowColor = '#41ee78'; }
+  ctx.fillStyle   = high ? '#41ee78' : '#1a2018';
+  ctx.strokeStyle = high ? '#70ff90' : '#2a3a28';
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath(); ctx.arc(x, yl, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // Flat top cut (realistic LED shape)
+  ctx.fillStyle = high ? '#60ee90' : '#243024';
+  ctx.beginPath(); ctx.ellipse(x, yl - 6, 5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Label
+  ctx.fillStyle   = high ? '#41ee78' : '#3a4a3a';
+  ctx.font        = 'bold 8px JetBrains Mono, monospace';
+  ctx.textAlign   = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, x, yl - 18);
+}
+
+function drawInputMarker(col, sig, label) {
+  const x  = cx(col);
+  const yh = ry('railTP');
+  const ym = yh - 26;
+  const high = sig === 1;
+  const color = label === 'A' ? '#4080ff' : '#ff8040';
+
+  // Connector wire
+  ctx.strokeStyle = high ? color : '#2a3040';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([3, 2]);
+  ctx.beginPath(); ctx.moveTo(x, yh); ctx.lineTo(x, ym + 8); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Terminal block
+  ctx.fillStyle   = high ? color + '25' : '#1a1e2a';
+  ctx.strokeStyle = high ? color : '#2e3848';
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath(); ctx.roundRect(x - 12, ym - 9, 24, 18, 3); ctx.fill(); ctx.stroke();
+
+  ctx.fillStyle = high ? color : '#3a4a5a';
+  ctx.font      = 'bold 9px JetBrains Mono, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, x, ym);
+}
+
+function drawColumnTrace(col, sig) {
+  // Faint trace showing column tie in top half
+  const color = sig === 1 ? 'rgba(65,238,120,0.12)' : 'rgba(255,255,255,0.03)';
+  ctx.fillStyle = color;
+  ctx.fillRect(cx(col) - 4, ry('A'), 8, ry('E') - ry('A'));
+}
+
+// ── Main draw ──────────────────────────────────────────────────────────
+
+function draw() {
+  const nets = computeNets(A, B);
+  const W = canvas.width, H = canvas.height;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0e1014';
+  ctx.fillRect(0, 0, W, H);
+
+  drawBoard();
+
+  // Column traces (internal breadboard ties)
+  [2, 4, 6, 7, 8, 12, 15, 16, 17, 21, 24, 25].forEach(c => {
+    drawColumnTrace(c, holeSig(c, 'A', nets));
+  });
+
+  // ── Wires ───────────────────────────────────────────────────────
+
+  // Power: VCC from top+ rail to XOR pin 14 (col 6, row F)
+  drawWire( 4, 'railTP',  6, 'F',  '#cc2020', 1);
+  // Power: GND from top- rail to XOR pin 7 (col 12, row E)
+  drawWire(14, 'railTN', 12, 'E',  '#505050', 0);
+
+  // Power: VCC from top+ rail to AND pin 14 (col 15, row F)
+  drawWire(13, 'railTP', 15, 'F',  '#cc2020', 1);
+  // Power: GND from top- rail to AND pin 7 (col 21, row E)
+  drawWire(23, 'railTN', 21, 'E',  '#505050', 0);
+
+  // Input A → XOR pin 1 (col 6, row E)
+  drawWire( 2, 'railTP',  6, 'E',  '#4080ff', nets['2:top']);
+  // Input A → AND pin 1 (col 15, row E) — routes through row C
+  drawWire( 2, 'C',      15, 'C',  '#4080ff', nets['2:top']);
+  drawWire(15, 'C',      15, 'E',  '#4080ff', nets['2:top']);
+
+  // Input B → XOR pin 2 (col 7, row E)
+  drawWire( 4, 'B',       7, 'E',  '#ff8040', nets['4:top']);
+  // Input B → AND pin 2 (col 16, row E) — routes through row D
+  drawWire( 4, 'D',      16, 'D',  '#ff8040', nets['4:top']);
+  drawWire(16, 'D',      16, 'E',  '#ff8040', nets['4:top']);
+
+  // XOR output (col 8, row E) → Sum LED (col 24, row A)
+  drawWire( 8, 'E',      24, 'A',  '#41ee78', nets['8:top']);
+  // AND output (col 17, row E) → Carry LED (col 25, row A)
+  drawWire(17, 'E',      25, 'A',  '#ee4178', nets['17:top']);
+
+  // ── ICs ────────────────────────────────────────────────────────
+  drawIC( 6, '74HC86', 'QUAD XOR', (A ^ B) === 1);
+  drawIC(15, '74HC08', 'QUAD AND', (A & B) === 1);
+
+  // ── Holes ──────────────────────────────────────────────────────
+  drawAllHoles(nets);
+
+  // ── LEDs ───────────────────────────────────────────────────────
+  drawLED(24, nets['24:top'], 'SUM');
+  drawLED(25, nets['25:top'], 'CARRY');
+
+  // ── Input markers (above power rail) ───────────────────────────
+  drawInputMarker(2, A, 'A');
+  drawInputMarker(4, B, 'B');
+
+  // ── Pin number hints on ICs ─────────────────────────────────────
+  const pinHints = [
+    { col:  6, row: 'E', pin: '1' },
+    { col:  7, row: 'E', pin: '2' },
+    { col:  8, row: 'E', pin: '3' },
+    { col: 12, row: 'E', pin: '7' },
+    { col:  6, row: 'F', pin: '14'},
+    { col: 15, row: 'E', pin: '1' },
+    { col: 16, row: 'E', pin: '2' },
+    { col: 17, row: 'E', pin: '3' },
+    { col: 21, row: 'E', pin: '7' },
+    { col: 15, row: 'F', pin: '14'},
+  ];
+  ctx.fillStyle = '#2a3838';
+  ctx.font = '7px JetBrains Mono, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  pinHints.forEach(({ col, row, pin }) => {
+    const yOff = row === 'F' ? 14 : -14;
+    ctx.fillText(pin, cx(col), ry(row) + yOff);
+  });
+
+  // ── Update DOM outputs ──────────────────────────────────────────
+  ['Sum','Carry'].forEach((name, i) => {
+    const val = i === 0 ? (A ^ B) : (A & B);
+    const el  = document.getElementById(`val${name}`);
+    el.textContent = val;
+    el.className   = `out-val ${val ? 'on' : 'off'}`;
+  });
+}
+
+// ── Controls ────────────────────────────────────────────────────────────
+
+document.getElementById('btnA').addEventListener('click', () => {
+  A ^= 1;
+  const btn = document.getElementById('btnA');
+  btn.textContent = `SW_A : ${A ? 'HIGH' : 'LOW '}`;
+  btn.classList.toggle('on', A === 1);
+  draw();
+});
+
+document.getElementById('btnB').addEventListener('click', () => {
+  B ^= 1;
+  const btn = document.getElementById('btnB');
+  btn.textContent = `SW_B : ${B ? 'HIGH' : 'LOW '}`;
+  btn.classList.toggle('on', B === 1);
+  draw();
+});
+
+draw();
+</script>
+</body>
+</html>

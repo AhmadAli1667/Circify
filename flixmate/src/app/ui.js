@@ -29,6 +29,18 @@ export function useIsMobile() {
   return isMobile
 }
 
+/** Calls `onClose` when Escape is pressed, while `active` is true. Shared by every modal/popover so each doesn't wire its own keydown listener. */
+export function useEscape(active, onClose) {
+  useEffect(() => {
+    if (!active) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [active, onClose])
+}
+
 /** Active/inactive chip colours used by every filter control. */
 export function pill(active) {
   return active

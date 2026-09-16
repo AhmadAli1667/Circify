@@ -45,6 +45,12 @@ const TAGLINES = {
 /** The catalogue is films only, no TV data behind these routes. */
 export const SERIES_AVAILABLE = false
 
+/** Best-guess viewer region from the browser locale (e.g. "en-GB" -> "GB"), US as the fallback TMDb itself assumes. */
+function viewerRegion() {
+  const region = (typeof navigator !== 'undefined' ? navigator.language : '')?.split('-')[1]
+  return region ? region.toUpperCase() : 'US'
+}
+
 const label = (name) => GENRE_LABEL[name] || name
 
 function formatRuntime(minutes) {
@@ -135,7 +141,7 @@ export function adaptMovieDetail({ detail, credits, videos, providers, recommend
     leadCast: cast.map((c) => c.name),
     cast,
     trailerKey: trailer?.key || null,
-    providers: providers?.results?.US || null,
+    providers: providers?.results?.[viewerRegion()] || providers?.results?.US || null,
     recommendations: (recommendations?.results || [])
       .map((m) => adaptMovie(m, genreMap))
       .filter(Boolean)

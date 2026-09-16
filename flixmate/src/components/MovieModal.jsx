@@ -3,7 +3,7 @@ import { useStore } from '../app/storeContext'
 import { useMovieDetails } from '../app/useMovieDetails'
 import { useMovieReviews } from '../app/useMovieReviews'
 import { backdrop, grad } from '../app/art'
-import { compactCount, timeAgo, useHover, useIsMobile } from '../app/ui'
+import { compactCount, timeAgo, useEscape, useHover, useIsMobile } from '../app/ui'
 import LinkedReviewText from './LinkedReviewText'
 import PosterImage from './PosterImage'
 import RowScroller from './RowScroller'
@@ -34,6 +34,8 @@ export default function MovieModal() {
   const movie = state.modalId ? getMovie(state.modalId) : null
   const detail = useMovieDetails(movie?.id, state.genreMap)
   const { reviews, total: reviewTotal, loading: reviewsLoading } = useMovieReviews(movie?.id)
+  const close = () => patch({ modalId: null })
+  useEscape(Boolean(movie), close)
 
   useEffect(() => {
     if (detail?.recommendations?.length) cacheMovies(detail.recommendations)
@@ -59,8 +61,6 @@ export default function MovieModal() {
     state.synExpanded && detail?.director
       ? `${movie.synopsis} Directed by ${detail.director}. As the story unfolds, loyalties fracture and every choice carries a cost, building to a finale audiences won’t stop talking about.`
       : movie.synopsis
-
-  const close = () => patch({ modalId: null })
 
   return (
     <div

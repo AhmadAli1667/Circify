@@ -1,3 +1,4 @@
+import { Component } from 'react'
 import { useStore } from './app/storeContext'
 import { useIsMobile } from './app/ui'
 import Navbar from './components/Navbar'
@@ -36,11 +37,14 @@ const SCREENS = {
 }
 
 export default function App() {
-  const { state } = useStore()
+  const { state, retryCatalogue } = useStore()
   const isMobile = useIsMobile()
   const Screen = SCREENS[state.screen] || Home
 
   if (state.moviesLoading) return <BootScreen />
+  if (state.moviesError && state.movies.length === 0) {
+    return <CatalogueErrorScreen message={state.moviesError} onRetry={retryCatalogue} />
+  }
 
   // For You goes full-screen on mobile, a Shorts-style immersive feed has no
   // room, or need, for the normal nav chrome, its own overlaid back button
@@ -50,7 +54,9 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--fm-bg)', color: 'var(--fm-text)' }}>
       {!immersive && <Navbar />}
-      <Screen />
+      <ScreenErrorBoundary>
+        <Screen />
+      </ScreenErrorBoundary>
 
       <MovieModal />
       <ShareModal />
@@ -59,6 +65,105 @@ export default function App() {
       <Toast message={state.toast} />
     </div>
   )
+}
+
+/** Shown when the initial TMDb catalogue pool fails to load, with a retry that re-runs the bootstrap. */
+function CatalogueErrorScreen({ message, onRetry }) {
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 14,
+        padding: 24,
+        textAlign: 'center',
+        background: 'var(--fm-bg)',
+        color: 'var(--fm-text)'
+      }}
+    >
+      <Logo size={40} />
+      <div style={{ fontWeight: 800, fontSize: 17 }}>Couldn&apos;t load movies</div>
+      <div style={{ color: 'var(--fm-muted)', fontSize: 13.5, maxWidth: 360, lineHeight: 1.5 }}>
+        {message || 'Something went wrong reaching the catalogue.'}
+      </div>
+      <button
+        onClick={onRetry}
+        style={{
+          marginTop: 4,
+          padding: '12px 24px',
+          border: 'none',
+          borderRadius: 14,
+          background: 'var(--fm-accent)',
+          color: '#fff',
+          fontWeight: 800,
+          fontSize: 14,
+          cursor: 'pointer'
+        }}
+      >
+        Try again
+      </button>
+    </div>
+  )
+}
+
+/**
+ * One thrown render error in any screen used to blank the whole app to a
+ * white page. This contains it to the screen area and offers a way back,
+ * a full reload rather than a local reset since whatever state caused the
+ * crash is still sitting in the store otherwise.
+ */
+class ScreenErrorBoundary extends Component {
+  state = { error: null }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  componentDidCatch(error, info) {
+    console.error('Screen crashed:', error, info)
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <div
+        style={{
+          minHeight: '60vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 14,
+          padding: 24,
+          textAlign: 'center'
+        }}
+      >
+        <div style={{ fontWeight: 800, fontSize: 17 }}>Something went wrong</div>
+        <div style={{ color: 'var(--fm-muted)', fontSize: 13.5, maxWidth: 360, lineHeight: 1.5 }}>
+          This screen hit an error. Reloading usually clears it.
+        </div>
+        <button
+          onClick={() => window.location.assign('/')}
+          style={{
+            marginTop: 4,
+            padding: '12px 24px',
+            border: 'none',
+            borderRadius: 14,
+            background: 'var(--fm-accent)',
+            color: '#fff',
+            fontWeight: 800,
+            fontSize: 14,
+            cursor: 'pointer'
+          }}
+        >
+          Go home
+        </button>
+      </div>
+    )
+  }
 }
 
 /** Shown while the initial TMDb catalogue pool is being fetched. */

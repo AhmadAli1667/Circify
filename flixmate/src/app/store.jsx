@@ -9,6 +9,11 @@ import { StoreContext } from './storeContext'
 
 const STORAGE_KEY = 'flixmate'
 
+// Ceiling on the id -> movie registry persisted to localStorage. Unbounded,
+// this crosses the ~5MB quota after enough browsing, and the write's
+// try/catch then silently stops ALL persistence, theme and avatar included.
+const MOVIE_CACHE_LIMIT = 400
+
 /** Fields mirrored into localStorage: cosmetic/local-only prefs plus the movie
  *  cache, so browsing still resolves to real titles after a reload. Watchlist,
  *  ratings, and chat history are account data now, they live in the backend. */
@@ -57,6 +62,7 @@ const INITIAL = {
   movies: [],
   moviesLoading: true,
   moviesError: null,
+  catalogueRetryToken: 0,
   genreMap: {},
   liveSearchResults: [],
   movieCache: saved.movieCache || {},
@@ -120,6 +126,10 @@ const INITIAL = {
 export function StoreProvider({ children }) {
   const [state, setState] = useState(INITIAL)
   const toastTimer = useRef(null)
+  // Insertion/access order for the movieCache LRU, seeded from whatever was
+  // already persisted. A plain ref, not state: it's bookkeeping for the cap
+  // below, not something any screen renders off of.
+  const cacheOrderRef = useRef(Object.keys(saved.movieCache || {}).map(Number))
 
   /**
    * Latest state for callbacks that outlive a render: the hero interval and
@@ -139,12 +149,24 @@ export function StoreProvider({ children }) {
     })
   }, [])
 
-  /** Merges adapted movies into the accumulating id → movie registry. */
+  /** Merges adapted movies into the accumulating id → movie registry, evicting the least recently touched entries past MOVIE_CACHE_LIMIT. */
   const cacheMovies = useCallback(
     (list) =>
-      patch((s) => ({
-        movieCache: { ...s.movieCache, ...Object.fromEntries((list || []).filter(Boolean).map((m) => [m.id, m])) }
-      })),
+      patch((s) => {
+        const next = { ...s.movieCache }
+        for (const m of list || []) {
+          if (!m) continue
+          next[m.id] = m
+          const order = cacheOrderRef.current
+          const idx = order.indexOf(m.id)
+          if (idx !== -1) order.splice(idx, 1)
+          order.push(m.id)
+        }
+        while (cacheOrderRef.current.length > MOVIE_CACHE_LIMIT) {
+          delete next[cacheOrderRef.current.shift()]
+        }
+        return { movieCache: next }
+      }),
     [patch]
   )
 
@@ -167,6 +189,11 @@ export function StoreProvider({ children }) {
    * for Home rows and filter/sort. The search box additionally reaches live
    * TMDb search below, so typing isn't limited to this pool.
    */
+  // Retry re-runs this effect by bumping `catalogueRetryToken` rather than
+  // calling an outside function from within it, same reasoning as the chat
+  // wait-copy fix elsewhere in this file: a `key`/dependency change is the
+  // idiomatic way to restart an effect, not a setState-calling function
+  // handed in from outside it.
   useEffect(() => {
     let alive = true
 
@@ -196,12 +223,8 @@ export function StoreProvider({ children }) {
         const pool = [...seen.values()]
         if (!alive) return
 
-        patch((s) => ({
-          movies: pool,
-          moviesLoading: false,
-          genreMap,
-          movieCache: { ...s.movieCache, ...Object.fromEntries(pool.map((m) => [m.id, m])) }
-        }))
+        patch({ movies: pool, moviesLoading: false, moviesError: null, genreMap })
+        cacheMovies(pool)
       } catch (e) {
         if (alive) patch({ moviesLoading: false, moviesError: e.message })
       }
@@ -211,7 +234,12 @@ export function StoreProvider({ children }) {
     return () => {
       alive = false
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.catalogueRetryToken]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Retry entry point for the error screen: resets loading/error state and bumps the token above to re-run the bootstrap effect. */
+  const retryCatalogue = useCallback(() => {
+    patch((s) => ({ moviesLoading: true, moviesError: null, catalogueRetryToken: (s.catalogueRetryToken || 0) + 1 }))
+  }, [patch])
 
   // --- account -------------------------------------------------------------
 
@@ -311,15 +339,24 @@ export function StoreProvider({ children }) {
     return () => clearInterval(t)
   }, [patch])
 
-  // Dismiss the avatar menu / filter popover on an outside click.
+  // Dismiss the avatar menu / filter popover on an outside click or Escape.
   useEffect(() => {
     const onDown = (e) => {
       if (e.target?.closest?.('[data-fm-pop]')) return
       const s = stateRef.current
       if (s.menuOpen || s.filterOpen) patch({ menuOpen: false, filterOpen: false })
     }
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      const s = stateRef.current
+      if (s.menuOpen || s.filterOpen) patch({ menuOpen: false, filterOpen: false })
+    }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [patch])
 
   useEffect(() => () => clearTimeout(toastTimer.current), [])
@@ -370,7 +407,12 @@ export function StoreProvider({ children }) {
       }
       const has = stateRef.current.watchlist.includes(id)
       patch((s) => ({ watchlist: has ? s.watchlist.filter((x) => x !== id) : [id, ...s.watchlist] }))
-      ;(has ? api.removeFromWatchlist(id) : api.addToWatchlist(id)).catch(() => {})
+      ;(has ? api.removeFromWatchlist(id) : api.addToWatchlist(id)).catch(() => {
+        // Roll the optimistic update back rather than leave the UI claiming
+        // something saved that the database never got.
+        patch((s) => ({ watchlist: has ? [id, ...s.watchlist] : s.watchlist.filter((x) => x !== id) }))
+        showSoon("Couldn't save, try again")
+      })
     },
     [patch, showSoon, nav]
   )
@@ -382,8 +424,17 @@ export function StoreProvider({ children }) {
         nav('auth')
         return
       }
+      const prev = stateRef.current.ratings[id]
       patch((s) => ({ ratings: { ...s.ratings, [id]: v } }))
-      api.setRatingRemote(id, v).catch(() => {})
+      api.setRatingRemote(id, v).catch(() => {
+        patch((s) => {
+          const ratings = { ...s.ratings }
+          if (prev === undefined) delete ratings[id]
+          else ratings[id] = prev
+          return { ratings }
+        })
+        showSoon("Couldn't save your rating, try again")
+      })
     },
     [patch, showSoon, nav]
   )
@@ -579,6 +630,7 @@ export function StoreProvider({ children }) {
       showSoon,
       doChat,
       cacheMovies,
+      retryCatalogue,
       filtersActive,
       results,
       genres,
@@ -602,6 +654,7 @@ export function StoreProvider({ children }) {
       showSoon,
       doChat,
       cacheMovies,
+      retryCatalogue,
       filtersActive,
       results,
       genres,

@@ -1,7 +1,7 @@
 import { useStore } from '../app/storeContext'
 import { useMovieDetails } from '../app/useMovieDetails'
 import { backdrop } from '../app/art'
-import { useHover } from '../app/ui'
+import { useEscape, useHover } from '../app/ui'
 
 /**
  * Trailer player. Embeds the real YouTube trailer once the detail fetch
@@ -13,9 +13,9 @@ export default function TrailerModal() {
   const { state, patch, getMovie } = useStore()
   const movie = state.trailerId ? getMovie(state.trailerId) : null
   const detail = useMovieDetails(movie?.id, state.genreMap)
-  if (!movie) return null
-
   const close = () => patch({ trailerId: null })
+  useEscape(Boolean(movie), close)
+  if (!movie) return null
 
   return (
     <div

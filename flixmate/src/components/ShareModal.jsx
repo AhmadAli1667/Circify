@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../app/storeContext'
 import { SoonTag } from './primitives'
-import { useHover } from '../app/ui'
+import { useEscape, useHover } from '../app/ui'
 
 const SHARE_URL = 'flixmate.app/u/alex'
 const TARGETS = ['Copy DM', 'Email', 'X', 'More']
@@ -13,9 +13,10 @@ const TARGETS = ['Copy DM', 'Email', 'X', 'More']
 export default function ShareModal() {
   const { state, patch, showSoon } = useStore()
   const [copied, setCopied] = useState(false)
+  const close = () => patch({ shareOpen: false })
+  useEscape(state.shareOpen, close)
 
   if (!state.shareOpen) return null
-  const close = () => patch({ shareOpen: false })
 
   const copy = async () => {
     try {

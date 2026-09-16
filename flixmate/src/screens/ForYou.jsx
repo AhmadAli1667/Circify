@@ -8,7 +8,7 @@ import * as api from '../app/tmdbApi'
 import { backdrop, grad, initialsOf } from '../app/art'
 import LinkedReviewText from '../components/LinkedReviewText'
 import PosterImage from '../components/PosterImage'
-import { compactCount, timeAgo, useHover, useIsMobile } from '../app/ui'
+import { compactCount, timeAgo, useEscape, useHover, useIsMobile } from '../app/ui'
 
 const REASONS = [
   'Because you rated it five stars',
@@ -634,6 +634,7 @@ function ReviewsPanel({ movie, isMobile, onClose }) {
   const cast = detail?.cast || []
   const [sort, setSort] = useState('top')
   const [draft, setDraft] = useState('')
+  useEscape(true, onClose)
 
   const sorted = useMemo(() => {
     const list = [...reviews]
