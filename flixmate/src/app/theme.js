@@ -7,40 +7,44 @@
  */
 
 export const PRESETS = {
+  // Warm theatre-black instead of a neutral graphite: every dark ramp below
+  // is tinted a few degrees toward its own accent hue rather than sitting on
+  // flat gray, so the whole app reads as one velvet-and-marquee-neon family
+  // instead of a generic dark-mode default with a colour swapped in.
   midnight: {
     da: '#FF5B52', da2: '#FF7068', la: '#E8483F', la2: '#D63C34',
-    dark: ['#09090B', '#111114', '#18181D', '#27272D', '#1d1d22', '#F5F5F5', '#A1A1AA', '#33333d'],
-    light: ['#F4F3F1', '#FFFFFF', '#FFFFFF', '#E6E3DF', '#EEEBE7', '#141416', '#6C6C74', '#d6d2cc']
+    dark: ['#0B0908', '#151110', '#1D1815', '#2E2621', '#221B17', '#F7F1EA', '#A99A8C', '#3D2F27'],
+    light: ['#F6F0E7', '#FFFFFF', '#FFFFFF', '#E7DDCE', '#F1E8DA', '#17110D', '#6E6155', '#D8C9B4']
   },
   coral: {
     da: '#FF5B4C', da2: '#FF7A6D', la: '#E64632', la2: '#D13c2a',
-    dark: ['#0d0a0b', '#161113', '#1d1619', '#2c2226', '#221a1d', '#F6F3F4', '#A99EA2', '#3a2d31'],
-    light: ['#F8F3F1', '#FFFFFF', '#FFFFFF', '#EBE0DC', '#F0E7E3', '#191316', '#7A6F72', '#ddd0cb']
+    dark: ['#100907', '#1B1210', '#241814', '#362621', '#281915', '#F8F0EC', '#B39A91', '#45302A'],
+    light: ['#FAF1EC', '#FFFFFF', '#FFFFFF', '#EEDCD3', '#F5E7DF', '#1C110D', '#7C685F', '#E0C7BA']
   },
   abyss: {
     da: '#2CC9E4', da2: '#57D8EF', la: '#0E97B4', la2: '#0b7f98',
-    dark: ['#050a0e', '#0b131a', '#111c25', '#1e2c37', '#132029', '#EEF4F7', '#8EA3B0', '#22323d'],
-    light: ['#EEF3F6', '#FFFFFF', '#FFFFFF', '#D8E4EA', '#E3EDF2', '#0D1519', '#5F727D', '#c6d5dd']
+    dark: ['#050B0F', '#0C151C', '#131F27', '#21323D', '#16232C', '#EEF6F9', '#8FA6B2', '#26404C'],
+    light: ['#EEF4F7', '#FFFFFF', '#FFFFFF', '#D5E3EA', '#E4EFF3', '#0B171C', '#5C7078', '#C2D6DE']
   },
   verdant: {
     da: '#34E39B', da2: '#57ECAD', la: '#12A56C', la2: '#0e8c5b',
-    dark: ['#060b08', '#0c1410', '#121c16', '#1f2c24', '#131f18', '#EEF5F0', '#93A89B', '#22342a'],
-    light: ['#EFF4F0', '#FFFFFF', '#FFFFFF', '#DBE7E0', '#E5EFE8', '#0C1611', '#61756A', '#c9dacf']
+    dark: ['#060B08', '#0D1611', '#142019', '#22322A', '#16221B', '#EFF6F1', '#92AA9C', '#253A2E'],
+    light: ['#EFF5F0', '#FFFFFF', '#FFFFFF', '#D9E7DE', '#E5F0E9', '#0B1610', '#5D7368', '#C6DACC']
   },
   golden: {
     da: '#E8A22B', da2: '#F5C451', la: '#B57A0E', la2: '#9c6a0b',
-    dark: ['#08080a', '#131210', '#1b1915', '#2d281d', '#221f17', '#F6F1E6', '#A69E88', '#38322a'],
-    light: ['#F7F2E6', '#FFFFFF', '#FFFFFF', '#EADFC6', '#F1EAD6', '#1a1610', '#7a7256', '#dccdaa']
+    dark: ['#0A0806', '#16120D', '#1F1912', '#332A1D', '#241E15', '#F8F1E3', '#AE9F80', '#4A3A24'],
+    light: ['#F9F2E2', '#FFFFFF', '#FFFFFF', '#EBDCB8', '#F3E9CE', '#1C1509', '#7D7052', '#DFCA9C']
   },
   amethyst: {
     da: '#A981F5', da2: '#C0A3FF', la: '#7C3AED', la2: '#6d28d9',
-    dark: ['#0a0910', '#141118', '#1b1723', '#2c2637', '#221d2c', '#F3F0F8', '#A29BB0', '#332c42'],
-    light: ['#F4F1F8', '#FFFFFF', '#FFFFFF', '#E5DEEF', '#EDE7F4', '#161320', '#6E6780', '#d3c9e4']
+    dark: ['#0A0812', '#14101B', '#1C1624', '#2E2739', '#211A2C', '#F4F0F9', '#A49AB5', '#362D46'],
+    light: ['#F5F1F9', '#FFFFFF', '#FFFFFF', '#E4DCF0', '#ECE5F5', '#150F20', '#6D6480', '#D3C6E6']
   },
   marine: {
     da: '#33D9A6', da2: '#5BE8BC', la: '#0F9E76', la2: '#0c8a66',
-    dark: ['#06111c', '#0b1a28', '#102434', '#1d3345', '#132636', '#EAF4F2', '#89A6AC', '#1f3a44'],
-    light: ['#EEF4F3', '#FFFFFF', '#FFFFFF', '#D6E6E2', '#E2EEEB', '#0B1720', '#5E7378', '#c4dad4']
+    dark: ['#050F0D', '#0B1916', '#11221E', '#1E332E', '#142823', '#EAF5F1', '#87A6A0', '#21403A'],
+    light: ['#EFF5F3', '#FFFFFF', '#FFFFFF', '#D7E7E1', '#E3EFEB', '#0A1714', '#5B7770', '#C4DAD2']
   }
 }
 

@@ -109,7 +109,7 @@ const INITIAL = {
   // interaction maps
   feedLiked: {},
   actLiked: {},
-  feedTab: {},
+  feedMode: 'trailer',
   toggles: { notif: true, newRel: true, privacy: false, friends: true, google: true },
   following: {},
 

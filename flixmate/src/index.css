@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Archivo:ital,wght@0,100..900;1,100..900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -21,7 +21,7 @@ body {
 }
 
 body {
-  font-family: 'Nunito', system-ui, sans-serif;
+  font-family: 'Archivo', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   background: var(--fm-bg, #09090b);
   color: var(--fm-text, #f5f5f5);
@@ -74,9 +74,11 @@ textarea {
   font-family: inherit;
 }
 
-/* The serif display face used for every headline and poster title. */
+/* The serif display face used for every headline and poster title: a classic
+   playbill/title-card serif standing in deliberate contrast to Archivo's
+   confident modern grotesk everywhere else. */
 .fm-disp {
-  font-family: 'Instrument Serif', Georgia, serif;
+  font-family: 'Libre Caslon Display', Georgia, serif;
   font-weight: 400;
 }
 
@@ -126,6 +128,36 @@ textarea {
   0%   { opacity: 0; transform: scale(1.14) translate(1.5%, 1.5%); }
   14%  { opacity: 1; }
   100% { opacity: 1; transform: scale(1) translate(0, 0); }
+}
+
+@keyframes fmShimmer {
+  from { transform: translateX(-60%) rotate(8deg); }
+  to   { transform: translateX(60%) rotate(8deg); }
+}
+
+/* Poster/photo placeholder shown while its image is still fetching, a
+   diagonal sheen sweeping across the tile so a slow load reads as "in
+   progress" instead of a blank gradient. */
+.fm-skeleton {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--fm-elev);
+}
+
+.fm-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: -50% -20%;
+  background: linear-gradient(
+    100deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.16) 47%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0.16) 53%,
+    transparent 65%
+  );
+  animation: fmShimmer 1.5s ease-in-out infinite;
 }
 
 /* --- hover helpers ------------------------------------------------------

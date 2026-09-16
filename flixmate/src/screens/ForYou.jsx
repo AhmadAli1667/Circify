@@ -234,32 +234,53 @@ export default function ForYou() {
 /* --- the card ------------------------------------------------------------ */
 
 function FeedItem({ movie, reason, isActive, isMobile, genreMap, peek, progress }) {
-  const { state, patch, openMovie } = useStore()
+  const { state, patch, openMovie, playTrailer } = useStore()
   const [muted, setMuted] = useState(true)
   const [paused, setPaused] = useState(false)
   const [pausedForKey, setPausedForKey] = useState(null)
   const videoRef = useRef(null)
+  const skipRef = useRef(0)
 
-  const tab = state.feedTab[movie.id] ?? (isActive ? 'trailer' : 'poster')
+  // Poster vs trailer is a feed-wide mode, not a per-card choice, so picking
+  // one on any card carries to whatever the next card scrolled to is. Only
+  // the active card ever actually renders a trailer, off-screen cards stay
+  // posters regardless of mode, so idle cards don't all autoplay at once.
+  const tab = isActive && state.feedMode === 'trailer' ? 'trailer' : 'poster'
   const detail = useMovieDetails(tab === 'trailer' ? movie.id : null, genreMap)
-  const setTab = (t) => patch((s) => ({ feedTab: { ...s.feedTab, [movie.id]: t } }))
+  const setTab = (t) => patch({ feedMode: t })
 
   if (detail?.trailerKey && detail.trailerKey !== pausedForKey) {
     setPausedForKey(detail.trailerKey)
     if (paused) setPaused(false)
   }
 
-  const postCommand = (func) => {
-    videoRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args: [] }), '*')
+  const postCommand = (func, args = []) => {
+    videoRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args }), '*')
   }
 
   useEffect(() => {
     if (tab === 'trailer' && detail?.trailerKey) postCommand(muted ? 'mute' : 'unMute')
   }, [muted, tab, detail?.trailerKey])
 
+  useEffect(() => {
+    skipRef.current = 0
+  }, [detail?.trailerKey])
+
   const togglePlay = () => {
     postCommand(paused ? 'playVideo' : 'pauseVideo')
     setPaused((p) => !p)
+  }
+
+  // No YouTube API player instance here, just the bare postMessage protocol,
+  // so there's no getCurrentTime() to read. Each tap instead jumps to a
+  // running 10s-further mark, reset whenever a new trailer loads.
+  const skipForward = () => {
+    skipRef.current += 10
+    postCommand('seekTo', [skipRef.current, true])
+    if (paused) {
+      postCommand('playVideo')
+      setPaused(false)
+    }
   }
 
   const art = movie.backdropUrl || movie.posterUrl
@@ -410,10 +431,16 @@ function FeedItem({ movie, reason, isActive, isMobile, genreMap, peek, progress 
                   onClick={togglePlay}
                   icon={paused ? <PlayIcon size={13} /> : <PauseIcon />}
                 />
+                <SquareButton label="Skip forward 10s" onClick={skipForward} icon={<ForwardIcon />} />
                 <SquareButton
                   label={muted ? 'Unmute trailer' : 'Mute trailer'}
                   onClick={() => setMuted((m) => !m)}
                   icon={muted ? <MutedIcon /> : <SoundIcon />}
+                />
+                <SquareButton
+                  label="Open full-page trailer"
+                  onClick={() => playTrailer(movie.id)}
+                  icon={<ExpandIcon />}
                 />
               </>
             )}
@@ -1271,6 +1298,23 @@ function PauseIcon() {
   return (
     <Svg size={14} fill="currentColor" width={0}>
       <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
+    </Svg>
+  )
+}
+
+function ForwardIcon() {
+  return (
+    <Svg size={16} fill="currentColor" width={0}>
+      <path d="M3 5v14l9-7z" />
+      <path d="M12 5v14l9-7z" />
+    </Svg>
+  )
+}
+
+function ExpandIcon() {
+  return (
+    <Svg size={16}>
+      <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3" />
     </Svg>
   )
 }

@@ -14,6 +14,7 @@ export default function PosterCard({ movie }) {
   const { state, openMovie, toggleWatch } = useStore()
   const [hov, bind] = useHover()
   const [imgFailed, setImgFailed] = useState(false)
+  const [imgLoaded, setImgLoaded] = useState(false)
 
   const inWatch = state.watchlist.includes(movie.id)
   const showArt = Boolean(movie.posterUrl) && !imgFailed
@@ -36,22 +37,30 @@ export default function PosterCard({ movie }) {
         }}
       >
         {movie.posterUrl && (
-          <img
-            src={movie.posterUrl}
-            alt=""
-            loading="lazy"
-            onError={() => setImgFailed(true)}
-            onLoad={() => setImgFailed(false)}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              // Hidden rather than unmounted so onError still fires.
-              visibility: imgFailed ? 'hidden' : 'visible'
-            }}
-          />
+          <>
+            {!imgLoaded && !imgFailed && <div className="fm-skeleton" />}
+            <img
+              src={movie.posterUrl}
+              alt=""
+              loading="lazy"
+              onError={() => setImgFailed(true)}
+              onLoad={() => {
+                setImgFailed(false)
+                setImgLoaded(true)
+              }}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                opacity: imgLoaded ? 1 : 0,
+                transition: 'opacity .35s ease',
+                // Hidden rather than unmounted so onError still fires.
+                visibility: imgFailed ? 'hidden' : 'visible'
+              }}
+            />
+          </>
         )}
 
         {/* film-grain + directional sheen, from the mockup */}

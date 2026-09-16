@@ -2,6 +2,31 @@
 
 Running log of what changed and why. Newest first.
 
+## 2026-09-16: Supabase keepalive cron, and a Vercel deploy readiness pass
+
+**What:** User wants to publish on Vercel and asked specifically for something to stop
+Supabase's free-plan project from auto-pausing after 7 days of no API activity (confirmed
+against current Supabase/Vercel docs rather than assumed, since the user's own estimate of
+the inactivity window was off).
+
+**New:** `backend/supabase/keepalive.sql` - a single-row `keepalive` table (`id` pinned to
+`1`, `pinged_at`). `backend/src/routes/cron.js` - `GET /api/cron/keepalive` upserts that row
+via `supabaseAdmin`, guarded by comparing the `Authorization` header against `CRON_SECRET`
+(Vercel sends this automatically as a bearer token on cron invocations once the env var is
+set; the check is skipped if `CRON_SECRET` is unset, so local dev needs nothing extra).
+Registered in `server.js`. `backend/vercel.json` schedules it daily at 05:00 UTC via Vercel
+Cron - once a day is comfortably inside both the 7-day pause window and the Hobby plan's
+once-per-day cron limit. `.env.example` documents `CRON_SECRET`.
+
+**Deploy readiness checked, not yet done:** confirmed Express still deploys to Vercel
+zero-config (no `vercel.json` needed for that part, only for the `crons` block), and ran
+`npm run build` clean. Still outstanding before a real deploy: the ~14 modified/untracked
+files in the working tree are uncommitted (Vercel deploys from git), `keepalive.sql` needs
+running in Supabase's SQL editor alongside the existing `migration.sql`, and both Vercel
+projects need their env vars set (frontend: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
+`VITE_API_BASE`; backend: everything in `.env.example` including the new `CRON_SECRET`,
+plus `ALLOWED_ORIGINS` pointed at the frontend's real Vercel URL once it exists).
+
 ## 2026-08-21: Inventory of everything uncommitted since `da1a18a`
 
 Not a change in itself, a stocktake. The last commit is `da1a18a` (2026-08-14, "Adding

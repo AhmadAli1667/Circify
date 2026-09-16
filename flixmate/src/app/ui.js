@@ -65,6 +65,19 @@ export const CHAT_WAIT_PHRASES = [
   'Almost there…'
 ]
 
+/** Cycled by full-page loaders (boot screen, actor/cast-crew pages) so a slow fetch reads as progress, not a stall. */
+export const LOADING_PHRASES = ['Loading…', 'Picking…', 'Formulating…', 'Dimming the lights…', 'Cueing the reel…']
+
+/** Rotates through `phrases` every `intervalMs`, looping back to the start. */
+export function useCyclingPhrase(phrases, intervalMs = 2200) {
+  const [index, setIndex] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setIndex((i) => (i + 1) % phrases.length), intervalMs)
+    return () => clearInterval(t)
+  }, [phrases, intervalMs])
+  return phrases[index]
+}
+
 /** Human labels for the decade filter keys. */
 export const DECADE_LABEL = { 2020: "'20s", 2010: "'10s", 2000: "'00s", class: 'Classics' }
 

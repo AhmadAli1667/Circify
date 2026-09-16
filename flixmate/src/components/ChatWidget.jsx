@@ -6,12 +6,13 @@ import { ChatComposer, SuggestionChip } from '../screens/Chat'
 
 /**
  * The floating mascot in the bottom-right corner and the compact chat panel it
- * opens. Hidden on the full-page chat screen, which owns the conversation.
+ * opens. Hidden on the full-page chat screen and on Home, both of which
+ * already own a chat surface of their own.
  */
 export default function ChatWidget() {
   const { state, patch } = useStore()
 
-  if (state.screen === 'chat') return null
+  if (state.screen === 'chat' || state.screen === 'home') return null
 
   return state.chat === 'open' ? <Panel /> : <Bubble onClick={() => patch({ chat: 'open' })} />
 }

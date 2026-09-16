@@ -2,6 +2,7 @@ import 'dotenv/config'
 import cors from 'cors'
 import express from 'express'
 import chatRouter from './routes/chat.js'
+import cronRouter from './routes/cron.js'
 import discoverRouter from './routes/discover.js'
 import genresRouter from './routes/genres.js'
 import moviesRouter from './routes/movies.js'
@@ -20,6 +21,7 @@ app.use(cors({ origin: allowedOrigins }))
 app.use(express.json())
 
 app.use('/api/chat', chatRouter)
+app.use('/api/cron', cronRouter)
 app.use('/api/movies', moviesRouter)
 app.use('/api/ratings', ratingsRouter)
 app.use('/api/search', searchRouter)

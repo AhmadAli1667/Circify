@@ -1,10 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../app/storeContext'
 import { usePersonDetails } from '../app/usePersonDetails'
 import { grad } from '../app/art'
 import PosterCard from '../components/PosterCard'
 import PosterImage from '../components/PosterImage'
-import { SoonTag } from '../components/primitives'
+import { LoadingLine, SoonTag } from '../components/primitives'
 import { useHover } from '../app/ui'
 
 /**
@@ -15,10 +15,20 @@ import { useHover } from '../app/ui'
 export default function Actor() {
   const { state, nav, cacheMovies } = useStore()
   const actor = usePersonDetails(state.actorId, state.genreMap)
+  const [sortBy, setSortBy] = useState('year')
 
   useEffect(() => {
     if (actor?.filmography?.length) cacheMovies(actor.filmography)
   }, [actor, cacheMovies])
+
+  const films = useMemo(() => {
+    if (!actor) return []
+    const list = [...actor.filmography]
+    list.sort((a, b) =>
+      sortBy === 'rating' ? b.rating - a.rating || b.year - a.year : b.year - a.year || b.rating - a.rating
+    )
+    return list
+  }, [actor, sortBy])
 
   if (!state.actorId) {
     return (
@@ -33,12 +43,11 @@ export default function Actor() {
     return (
       <div className="fm-page-pad" style={{ paddingTop: 40, paddingBottom: 40, maxWidth: 1180, margin: '0 auto' }}>
         <BackBtn onClick={() => nav('home')} />
-        <p style={{ color: 'var(--fm-muted)', fontWeight: 600 }}>Loading…</p>
+        <LoadingLine />
       </div>
     )
   }
 
-  const films = actor.filmography
   const avgRating = films.length ? (films.reduce((a, b) => a + b.rating, 0) / films.length).toFixed(1) : 'N/A'
   const topFilm = films.length ? films.reduce((a, b) => (b.rating > a.rating ? b : a)).title : 'N/A'
 
@@ -164,9 +173,21 @@ export default function Actor() {
         </div>
       </div>
 
-      <h2 className="fm-disp" style={{ margin: '0 0 18px', fontSize: 30 }}>
-        Filmography
-      </h2>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12,
+          marginBottom: 18
+        }}
+      >
+        <h2 className="fm-disp" style={{ margin: 0, fontSize: 30 }}>
+          Filmography
+        </h2>
+        {films.length > 1 && <SortToggle value={sortBy} onChange={setSortBy} />}
+      </div>
       {films.length ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 18 }}>
           {films.map((m) => (
@@ -176,6 +197,50 @@ export default function Actor() {
       ) : (
         <p style={{ color: 'var(--fm-muted)', fontWeight: 600 }}>No movie credits on file for this performer.</p>
       )}
+    </div>
+  )
+}
+
+const SORT_OPTIONS = [
+  { key: 'rating', label: 'Popularity' },
+  { key: 'year', label: 'Year' }
+]
+
+/** Lets the filmography grid be ranked by TMDb rating or by release year. */
+function SortToggle({ value, onChange }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 4,
+        padding: 4,
+        borderRadius: 12,
+        background: 'var(--fm-input)',
+        border: '1px solid var(--fm-border)'
+      }}
+    >
+      {SORT_OPTIONS.map((opt) => {
+        const active = value === opt.key
+        return (
+          <button
+            key={opt.key}
+            onClick={() => onChange(opt.key)}
+            style={{
+              padding: '7px 14px',
+              borderRadius: 9,
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 800,
+              fontSize: 12.5,
+              background: active ? 'var(--fm-accent)' : 'transparent',
+              color: active ? '#fff' : 'var(--fm-muted)',
+              transition: 'background .2s, color .2s'
+            }}
+          >
+            {opt.label}
+          </button>
+        )
+      })}
     </div>
   )
 }

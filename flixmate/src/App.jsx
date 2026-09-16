@@ -5,7 +5,7 @@ import MovieModal from './components/MovieModal'
 import TrailerModal from './components/TrailerModal'
 import ShareModal from './components/ShareModal'
 import ChatWidget from './components/ChatWidget'
-import { Logo, Toast } from './components/primitives'
+import { Logo, LoadingLine, Toast } from './components/primitives'
 
 import Home from './screens/Home'
 import Search from './screens/Search'
@@ -88,7 +88,7 @@ function BootScreen() {
           animation: 'fmSpin .8s linear infinite'
         }}
       />
-      <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--fm-muted)' }}>Loading the catalogue…</span>
+      <LoadingLine style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }} />
     </div>
   )
 }

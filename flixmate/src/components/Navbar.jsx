@@ -4,7 +4,8 @@ import { PRESET_LIST } from '../app/theme'
 import { SERIES_AVAILABLE } from '../app/catalog'
 import { initialsOf } from '../app/art'
 import { Logo, SearchIcon, SoonTag } from './primitives'
-import { pill, useHover, useIsMobile } from '../app/ui'
+import { useHover, useIsMobile } from '../app/ui'
+import SearchDropdown from './SearchDropdown'
 
 const NAV_ITEMS = [
   { k: 'theatres', l: 'In Theatres' },
@@ -312,46 +313,46 @@ function FilterPopover() {
           }}
         >
           <SectionLabel>Show</SectionLabel>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
-            {typeFilters.map((t) => (
-              <ChipButton
-                key={t.k}
-                grow
-                active={state.type === t.k}
-                onClick={() => setType(t.k)}
-                trailing={t.k === 'series' && !SERIES_AVAILABLE ? <SoonTag /> : null}
-              >
-                {t.l}
-              </ChipButton>
-            ))}
+          <div style={{ marginBottom: 18 }}>
+            <SearchDropdown
+              options={typeFilters.map((t) => ({
+                value: t.k,
+                label: t.l,
+                hint: t.k === 'series' && !SERIES_AVAILABLE ? <SoonTag /> : null
+              }))}
+              value={state.type}
+              onChange={setType}
+              placeholder="Search…"
+            />
           </div>
 
           <SectionLabel>Sort by</SectionLabel>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
-            {sortOptions.map((o) => (
-              <ChipButton key={o.k} grow active={state.sortBy === o.k} onClick={() => patch({ sortBy: o.k })}>
-                {o.l}
-              </ChipButton>
-            ))}
+          <div style={{ marginBottom: 18 }}>
+            <SearchDropdown
+              options={sortOptions.map((o) => ({ value: o.k, label: o.l }))}
+              value={state.sortBy}
+              onChange={(k) => patch({ sortBy: k })}
+              placeholder="Search…"
+            />
           </div>
 
           <SectionLabel>Minimum rating</SectionLabel>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
-            {ratingTiers.map((r) => (
-              <ChipButton key={r.k} grow active={state.minRating === r.k} onClick={() => patch({ minRating: r.k })}>
-                {r.l}
-              </ChipButton>
-            ))}
+          <div style={{ marginBottom: 18 }}>
+            <SearchDropdown
+              options={ratingTiers.map((r) => ({ value: r.k, label: r.l }))}
+              value={state.minRating}
+              onChange={(k) => patch({ minRating: k })}
+              placeholder="Search…"
+            />
           </div>
 
           <SectionLabel>Genre</SectionLabel>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {['all', ...genres].map((g) => (
-              <ChipButton key={g} small active={state.genre === g} onClick={() => patch({ genre: g, mood: null })}>
-                {g === 'all' ? 'All' : g}
-              </ChipButton>
-            ))}
-          </div>
+          <SearchDropdown
+            options={['all', ...genres].map((g) => ({ value: g, label: g === 'all' ? 'All' : g }))}
+            value={state.genre}
+            onChange={(g) => patch({ genre: g, mood: null })}
+            placeholder="Search genres…"
+          />
         </div>
       )}
     </div>
@@ -372,31 +373,6 @@ function SectionLabel({ children }) {
     >
       {children}
     </div>
-  )
-}
-
-export function ChipButton({ children, active, onClick, grow, small, trailing }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        flex: grow ? 1 : 'none',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 5,
-        padding: small ? '6px 11px' : '9px 6px',
-        borderRadius: small ? 9 : 10,
-        border: '1px solid',
-        ...pill(active),
-        fontWeight: small ? 700 : 800,
-        fontSize: small ? 12 : 12.5,
-        cursor: 'pointer'
-      }}
-    >
-      {children}
-      {trailing}
-    </button>
   )
 }
 

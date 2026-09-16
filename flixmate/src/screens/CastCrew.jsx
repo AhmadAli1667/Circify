@@ -3,6 +3,7 @@ import { useStore } from '../app/storeContext'
 import * as api from '../app/tmdbApi'
 import { grad, hueFor, initialsOf } from '../app/art'
 import PosterImage from '../components/PosterImage'
+import { LoadingLine } from '../components/primitives'
 import { useHover } from '../app/ui'
 
 /**
@@ -66,7 +67,7 @@ export default function CastCrew() {
       </div>
 
       {!credits ? (
-        <p style={{ color: 'var(--fm-muted)', fontWeight: 600 }}>Loading…</p>
+        <LoadingLine />
       ) : (
         <>
           <h2 className="fm-disp" style={{ margin: '0 0 18px', fontSize: 26 }}>

@@ -1,6 +1,7 @@
 import { useStore } from '../app/storeContext'
-import { MOOD_MAP, pill, useIsMobile } from '../app/ui'
+import { MOOD_MAP, useIsMobile } from '../app/ui'
 import { SearchIcon } from './primitives'
+import SearchDropdown from './SearchDropdown'
 
 const DECADES = [
   { k: 'all', l: 'Any era' },
@@ -24,7 +25,7 @@ const RATING_TIERS = [
  * that opens a bottom sheet instead, tap-only, with a backdrop to close.
  */
 export default function WizardRail() {
-  const { state, patch, resetFilters, filtersActive, results, genres } = useStore()
+  const { state, patch, resetFilters, filtersActive, genres } = useStore()
   const isMobile = useIsMobile()
   const open = isMobile ? state.wizardPin : state.wizardHover || state.wizardPin
   const close = () => patch({ wizardPin: false, wizardHover: false })
@@ -68,43 +69,46 @@ export default function WizardRail() {
       </div>
 
       <GroupTitle>How should it feel?</GroupTitle>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 26 }}>
-        {Object.keys(MOOD_MAP).map((label) => (
-          <RailChip
-            key={label}
-            round
-            active={state.mood === label}
-            onClick={() => patch({ mood: label, genre: MOOD_MAP[label] })}
-          >
-            {label}
-          </RailChip>
-        ))}
+      <div style={{ marginBottom: 22 }}>
+        <SearchDropdown
+          options={[
+            { value: null, label: 'Any mood' },
+            ...Object.keys(MOOD_MAP).map((label) => ({ value: label, label }))
+          ]}
+          value={state.mood}
+          onChange={(v) => patch(v ? { mood: v, genre: MOOD_MAP[v] } : { mood: null })}
+          placeholder="Search moods…"
+        />
       </div>
 
       <GroupTitle>Genre</GroupTitle>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 26 }}>
-        {['all', ...genres].map((g) => (
-          <RailChip key={g} active={state.genre === g} onClick={() => patch({ genre: g, mood: null })}>
-            {g === 'all' ? 'All' : g}
-          </RailChip>
-        ))}
+      <div style={{ marginBottom: 22 }}>
+        <SearchDropdown
+          options={['all', ...genres].map((g) => ({ value: g, label: g === 'all' ? 'All' : g }))}
+          value={state.genre}
+          onChange={(g) => patch({ genre: g, mood: null })}
+          placeholder="Search genres…"
+        />
       </div>
 
       <GroupTitle>Only show me</GroupTitle>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-        {RATING_TIERS.map((r) => (
-          <RailChip key={r.k} grow active={state.minRating === r.k} onClick={() => patch({ minRating: r.k })}>
-            {r.l}
-          </RailChip>
-        ))}
+      <div style={{ marginBottom: 22 }}>
+        <SearchDropdown
+          options={RATING_TIERS.map((r) => ({ value: r.k, label: r.l }))}
+          value={state.minRating}
+          onChange={(k) => patch({ minRating: k })}
+          placeholder="Search ratings…"
+        />
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 24 }}>
-        {DECADES.map((d) => (
-          <RailChip key={d.k} active={state.decade === d.k} onClick={() => patch({ decade: d.k })}>
-            {d.l}
-          </RailChip>
-        ))}
+      <GroupTitle>Era</GroupTitle>
+      <div style={{ marginBottom: 24 }}>
+        <SearchDropdown
+          options={DECADES.map((d) => ({ value: d.k, label: d.l }))}
+          value={state.decade}
+          onChange={(k) => patch({ decade: k })}
+          placeholder="Search eras…"
+        />
       </div>
 
       <button
@@ -123,7 +127,7 @@ export default function WizardRail() {
           boxShadow: '0 5px 18px var(--fm-accentglow)'
         }}
       >
-        Show {results.length} results
+        Show results
       </button>
       <button
         onClick={resetFilters}
@@ -322,25 +326,4 @@ export default function WizardRail() {
 
 function GroupTitle({ children }) {
   return <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 11 }}>{children}</div>
-}
-
-function RailChip({ children, active, onClick, grow, round }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        flex: grow ? 1 : 'none',
-        padding: round ? '8px 13px' : grow ? '9px 0' : '7px 12px',
-        borderRadius: round ? 20 : 9,
-        border: '1px solid',
-        ...pill(active),
-        fontWeight: grow ? 800 : 700,
-        fontSize: round ? 13 : 12.5,
-        cursor: 'pointer',
-        transition: 'all .2s'
-      }}
-    >
-      {children}
-    </button>
-  )
 }

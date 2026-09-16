@@ -1,4 +1,4 @@
-import { useHover } from '../app/ui'
+import { LOADING_PHRASES, useCyclingPhrase, useHover } from '../app/ui'
 
 /**
  * Small presentational pieces shared across screens.
@@ -120,6 +120,13 @@ export function Toast({ message }) {
       {message}
     </div>
   )
+}
+
+/** Full-page "Loading…" text that cycles through a few in-voice phrases, so a
+ *  slow fetch reads as something happening rather than a stalled screen. */
+export function LoadingLine({ style }) {
+  const phrase = useCyclingPhrase(LOADING_PHRASES)
+  return <p style={{ color: 'var(--fm-muted)', fontWeight: 600, ...style }}>{phrase}</p>
 }
 
 /** Inline "coming soon" pill for controls that sit inside a layout. */
